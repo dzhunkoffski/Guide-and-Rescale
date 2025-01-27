@@ -1,0 +1,42 @@
+run_name: ???
+hydra:
+  mode: ${hydra.mode}
+  run:
+    dir: ./outputs/${now:%Y-%m-%d}/${now:%H-%M-%S}=${run_name}
+  sweep:
+    dir: ./hydra_multirun/${now:%Y-%m-%d}/${now:%H-%M-%S}
+    subdir: ${hydra.job.num}
+
+device: cuda:1
+
+scheduler_name: ddim_50_eps
+model_name: stable-diffusion-v1-4
+guidance_cfg: configs/exp1_ctrl_style.yaml
+
+samples:
+  - cnt_img_path: data/content/face2.jpg
+    cnt_prompt: A photo
+    sty_img_path: data/style/moonk.jpg
+    sty_prompt: Moonk's "The scream" painting
+    edit_prompt: A moonk style face
+  - cnt_img_path: data/content/face2.jpg
+    cnt_prompt: A photo
+    sty_img_path: data/style/picasso.jpg
+    sty_prompt: Picasso's painting
+    edit_prompt: A picasso style face
+  - cnt_img_path: data/content/square.png
+    cnt_prompt: Black and white picture of a primitive square shape
+    sty_img_path: data/style/moonk.jpg
+    sty_prompt: Moonk's "The scream" painting
+    edit_prompt: A moonk style square
+  - cnt_img_path: data/content/face2.jpg
+    cnt_prompt: Black and white picture of a primitive square shape
+    sty_img_path: data/style/picasso.jpg
+    sty_prompt: Picasso's painting
+    edit_prompt: A picasso style square
+
+exp_configs:
+  style_guider_ix: 2
+  style_guider_scale_multiplier: 1.0
+  style_guider_scale_default: 2.5
+  style_guider_scale_n_iters: 25

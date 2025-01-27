@@ -445,8 +445,8 @@ class GuidanceEditing:
                 energy = self._get_scale(g_scale, diffusion_iter) * guider(data_dict)
                 if not torch.allclose(energy, torch.tensor(0.)):
                     backward_guiders_sum += energy
-                else:
-                    print(f'[WARNING]: guider {name} has 0 energy')
+                # else:
+                #     print(f'[WARNING]: guider {name} has 0 energy')
 
         if hasattr(backward_guiders_sum, 'backward'):
             backward_guiders_sum.backward()

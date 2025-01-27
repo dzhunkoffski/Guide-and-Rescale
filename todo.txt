@@ -1,0 +1,4 @@
+[ ]: Set of Experiments 1: eq. 13 but Phi* := Phi_style
+[ ]: Extract embeddings from style image and use them for prompting
+    (something like "Inversion-based Style Transfer with Diffusion Models")
+[ ]: Ablate AdaIn(z_cnt, z_sty) for start_latent
