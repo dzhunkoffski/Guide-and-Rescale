@@ -102,6 +102,204 @@ class GuidanceEditing:
         )
 
         return self.edit()
+    
+    def train_stylisation(
+            self,
+            image_gt: PIL.Image.Image,
+            inv_prompt: str,
+            trg_prompt: str,
+            control_image: Optional[PIL.Image.Image] = None,
+            inv_control_image_prompt: str = "",
+            verbose: bool = False
+    ):
+        self.init_prompt_stylisation(inv_prompt, trg_prompt, inv_control_image_prompt)
+        self.verbose = verbose
+
+        image_gt = np.array(image_gt)
+        image_ctrl = np.array(control_image)
+        if self.config.start_latent == 'inversion':
+            _, self.inv_latents, self.uncond_embeddings = self.inversion_engine(
+                image_gt, inv_prompt,
+                verbose=self.verbose
+            )
+            # HACK: inverse style image
+            _, self.inv_ctrl_latents, self.uncond_ctrl_embeddings = self.inversion_engine(
+                image_ctrl, inv_control_image_prompt,
+                verbose=self.verbose
+            )
+        elif self.config.start_latent == 'random':
+            self.inv_latents = self.sample_noised_latents(
+                image2latent(image_gt, self.model)
+            )
+        else:
+            raise ValueError('Incorrect start latent type')
+
+        for g_name, (guider, _) in self.guiders.items():
+            if hasattr(guider, 'model_patch'):
+                guider.model_patch(self.model, self_attn_layers_num=self.self_attn_layers_num)
+
+        self.start_latent = self.inv_latents[-1].clone()
+        # TODO: AdaIN(start_latent, ctrl_latent)
+
+        params = {
+            'model': self.model,
+            'inv_prompt': inv_prompt,
+            'trg_prompt': trg_prompt
+        }
+        for g_name, (guider, _) in self.guiders.items():
+            if hasattr(guider, 'train'):
+                guider.train(params)
+
+        for guider_name, (guider, _) in self.guiders.items():
+            guider.clear_outputs()
+
+    def _construct_data_dict_stylisation(
+            self, latents,
+            diffusion_iter,
+            timestep
+    ):
+        uncond_emb, inv_prompt_emb, trg_prompt_emb, inv_ctrl_prompt_emb = self.context.chunk(4)
+
+        if self.uncond_embeddings is not None:
+            uncond_emb = self.uncond_embeddings[diffusion_iter]
+
+        data_dict = {
+            'latent': latents,
+            'inv_latent': self.inv_latents[-diffusion_iter - 1],
+            'inv_ctrl_latent': self.inv_ctrl_latents[-diffusion_iter - 1],
+            'timestep': timestep,
+            'model': self.model,
+            'uncond_emb': uncond_emb,
+            'trg_emb': trg_prompt_emb,
+            'inv_emb': inv_prompt_emb,
+            'inv_ctrl_emb': inv_ctrl_prompt_emb,
+            'diff_iter': diffusion_iter
+        }
+
+        with torch.no_grad():
+            uncond_unet = unet_forward(
+                self.model,
+                data_dict['latent'],
+                data_dict['timestep'],
+                data_dict['uncond_emb'],
+                None
+            )
+
+        # XXX: Где то гайдеры привязаны к UNet, поэтому отдельно форвардить их не нужно (кажется что так)
+        for g_name, (guider, _) in self.guiders.items():
+            if hasattr(guider, 'model_patch'):
+                guider.clear_outputs()
+
+        with torch.no_grad():
+            inv_prompt_unet = unet_forward(
+                self.model,
+                data_dict['inv_latent'],
+                data_dict['timestep'],
+                data_dict['inv_emb'],
+                None
+            )
+
+        for g_name, (guider, _) in self.guiders.items():
+            if hasattr(guider, 'model_patch'):
+                if 'inv_inv' in guider.forward_hooks:
+                    data_dict.update({f"{g_name}_inv_inv": guider.output})
+                guider.clear_outputs()
+
+        # HACK: get unet features from style image
+        with torch.no_grad():
+            inv_style_unet = unet_forward(
+                self.model,
+                data_dict['inv_ctrl_latent'],
+                data_dict['timestep'],
+                data_dict['inv_ctrl_emb'],
+                None
+            )
+        # HACK: get inputs for guiders
+        for g_name, (guider, _) in self.guiders.items():
+            if hasattr(guider, 'model_patch'):
+                if 'sty_inv' in guider.forward_hooks:
+                    data_dict.update({f"{g_name}_sty_inv": guider.output})
+                guider.clear_outputs()
+
+        data_dict['latent'].requires_grad = True
+
+        src_prompt_unet = unet_forward(
+            self.model,
+            data_dict['latent'],
+            data_dict['timestep'],
+            data_dict['inv_emb'],
+            None
+        )
+
+        for g_name, (guider, _) in self.guiders.items():
+            if hasattr(guider, 'model_patch'):
+                if 'cur_inv' in guider.forward_hooks:
+                    data_dict.update({f"{g_name}_cur_inv": guider.output})
+                guider.clear_outputs()
+
+        trg_prompt_unet = unet_forward(
+            self.model,
+            data_dict['latent'],
+            data_dict['timestep'],
+            data_dict['trg_emb'],
+            None
+        )
+
+        for g_name, (guider, _) in self.guiders.items():
+            if hasattr(guider, 'model_patch'):
+                if 'cur_trg' in guider.forward_hooks:
+                    data_dict.update({f"{g_name}_cur_trg": guider.output})
+                guider.clear_outputs()
+
+        data_dict.update({
+            'uncond_unet': uncond_unet,
+            'trg_prompt_unet': trg_prompt_unet,
+        })
+
+        return data_dict
+
+    def edit_stylisation(self):
+        self.model.scheduler.set_timesteps(self.model.scheduler.num_inference_steps)
+        latents = self.start_latent
+        self.latents_stack = []
+
+        for i, timestep in tqdm(
+                enumerate(self.model.scheduler.timesteps),
+                total=self.model.scheduler.num_inference_steps,
+                desc='Editing',
+                disable=not self.verbose
+        ):
+            # 1. Construct dict
+            data_dict = self._construct_data_dict_stylisation(latents, i, timestep)
+
+            # 2. Calculate guidance
+            noise_pred = self._get_noise(data_dict, i)
+
+            # 3. Scheduler step
+            latents = self._step(noise_pred, timestep, latents)
+
+        self._model_unpatch(self.model)
+        return latent2image(latents, self.model)[0]
+
+    def call_stylisation(
+            self,
+            image_gt: PIL.Image.Image,
+            inv_prompt: str,
+            trg_prompt: str,
+            control_image: PIL.Image.Image,
+            inv_control_prompt: str,
+            verbose: bool = False
+    ):
+        self.train_stylisation(
+            image_gt,
+            inv_prompt,
+            trg_prompt,
+            control_image,
+            inv_control_prompt,
+            verbose
+        )
+
+        return self.edit_stylisation()
 
     def train(
             self,
@@ -247,6 +445,8 @@ class GuidanceEditing:
                 energy = self._get_scale(g_scale, diffusion_iter) * guider(data_dict)
                 if not torch.allclose(energy, torch.tensor(0.)):
                     backward_guiders_sum += energy
+                else:
+                    print(f'[WARNING]: guider {name} has 0 energy')
 
         if hasattr(backward_guiders_sum, 'backward'):
             backward_guiders_sum.backward()
@@ -287,7 +487,7 @@ class GuidanceEditing:
                 desc='Editing',
                 disable=not self.verbose
         ):
-            # 1. Construct dict            
+            # 1. Construct dict
             data_dict = self._construct_data_dict(latents, i, timestep)
 
             # 2. Calculate guidance
@@ -298,6 +498,15 @@ class GuidanceEditing:
 
         self._model_unpatch(self.model)
         return latent2image(latents, self.model)[0]
+    
+    @torch.no_grad()
+    def init_prompt_stylisation(self, inv_prompt: str, trg_prompt: str, inv_ctrl_prompt: str = ""):
+        trg_prompt_embed = self.get_prompt_embed(trg_prompt)
+        inv_prompt_embed = self.get_prompt_embed(inv_prompt)
+        uncond_embed = self.get_prompt_embed("")
+        inv_ctrl_prompt_embed = self.get_prompt_embed(inv_ctrl_prompt)
+
+        self.context = torch.cat([uncond_embed, inv_prompt_embed, trg_prompt_embed, inv_ctrl_prompt_embed])
 
     @torch.no_grad()
     def init_prompt(self, inv_prompt: str, trg_prompt: str):

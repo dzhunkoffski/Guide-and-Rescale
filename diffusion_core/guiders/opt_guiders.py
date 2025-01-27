@@ -18,7 +18,7 @@ class BaseGuider:
         if self.grad_guider:
             return self.grad_fn(data_dict)
         else:
-            return self.calc_energy(data_dict)   
+            return self.calc_energy(data_dict)
         
     def clear_outputs(self):
         if not self.grad_guider:
@@ -46,6 +46,29 @@ class LatentsDiffGuidance(BaseGuider):
     def grad_fn(self, data_dict):
         return 2 * (data_dict['latent'] - data_dict['inv_latent'])
 
+@opt_registry.add_to_registry('style_features_map_l2')
+class StyleFeaturesMapL2EnergyGuider(BaseGuider):
+    def __init__(self, block='up'):
+        assert block in ['down', 'up', 'mid', 'whole']
+        self.block = block
+
+    patched = True
+    forward_hooks = ['cur_trg', 'sty_inv']
+    def calc_energy(self, data_dict):
+        return torch.mean(torch.pow(data_dict['style_features_map_l2_cur_trg'] - data_dict['style_features_map_l2_sty_inv'], 2))
+
+    def model_patch(self, model, self_attn_layers_num=None):
+        def hook_fn(module, input, output):
+            self.output = output
+        if self.block == 'mid':
+            model.unet.mid_block.register_forward_hook(hook_fn)
+        elif self.block == 'up':
+            model.unet.up_blocks[1].resnets[1].register_forward_hook(hook_fn)
+        elif self.block == 'down':
+            model.unet.down_blocks[1].resnets[1].register_forward_hook(hook_fn)
+
+    def single_output_clear(self):
+        None
                 
 @opt_registry.add_to_registry('features_map_l2')
 class FeaturesMapL2EnergyGuider(BaseGuider):
@@ -58,6 +81,8 @@ class FeaturesMapL2EnergyGuider(BaseGuider):
     def calc_energy(self, data_dict):
         return torch.mean(torch.pow(data_dict['features_map_l2_cur_trg'] - data_dict['features_map_l2_inv_inv'], 2))
     
+    # XXX: model_patch - ???
+    # XXX: register_foward_hook - ???
     def model_patch(self, model, self_attn_layers_num=None):
         def hook_fn(module, input, output):
             self.output = output 
@@ -70,8 +95,7 @@ class FeaturesMapL2EnergyGuider(BaseGuider):
     
     def single_output_clear(self):
         None
-    
-    
+
 @opt_registry.add_to_registry('self_attn_map_l2')
 class SelfAttnMapL2EnergyGuider(BaseGuider):
     patched = True
