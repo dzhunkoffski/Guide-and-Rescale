@@ -85,8 +85,11 @@ def run_experiment(cfg: DictConfig):
         sty_name = Path(sample_items['sty_img_path']).stem
         log(f'Processing cnt={cnt_name}; sty={sty_name}')
 
-        assert config['guiders'][cfg['exp_configs']['style_guider_ix']]['name'] == 'style_features_map_l2'
+        style_g_ix = cfg['exp_configs']['style_guider_ix']
+        assert config['guiders'][style_g_ix]['name'] == 'style_features_map_l2'
         g_config = copy.deepcopy(config)
+        for g_scale_ix in range(len(g_config['guiders'][style_g_ix]['g_scale'])):
+            g_config['guiders'][style_g_ix]['g_scale'][g_scale_ix] *= cfg['exp_configs']['style_guider_scale_multiplier']
 
         res = generate_single(
             edit_cfg=g_config, model=model,
