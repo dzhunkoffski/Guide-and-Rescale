@@ -7,62 +7,16 @@ verbose: false
 edit_types: stylisation
 guiders:
 - name: cfg
-  g_scale: 7.5
+  g_scale: 0.0
   kwargs:
     is_source_guidance: false
-- name: self_attn_map_l2
-  g_scale:
-  - 100000.0
-  - 100000.0
-  - 100000.0
-  - 100000.0
-  - 100000.0
-  - 100000.0
-  - 100000.0
-  - 100000.0
-  - 100000.0
-  - 100000.0
-  - 100000.0
-  - 100000.0
-  - 100000.0
-  - 100000.0
-  - 100000.0
-  - 100000.0
-  - 100000.0
-  - 100000.0
-  - 100000.0
-  - 100000.0
-  - 100000.0
-  - 100000.0
-  - 100000.0
-  - 100000.0
-  - 100000.0
-  - 0.0
-  - 0.0
-  - 0.0
-  - 0.0
-  - 0.0
-  - 0.0
-  - 0.0
-  - 0.0
-  - 0.0
-  - 0.0
-  - 0.0
-  - 0.0
-  - 0.0
-  - 0.0
-  - 0.0
-  - 0.0
-  - 0.0
-  - 0.0
-  - 0.0
-  - 0.0
-  - 0.0
-  - 0.0
-  - 0.0
-  - 0.0
-  - 0.0
-  kwargs: {}
+- name: self_attn_map_l2_appearance
+  g_scale: 1.
+  kwargs:
+    self_attn_gs: 300000.
+    app_gs: 500.
+    new_features: true
+    total_first_steps: 30
 - name: style_features_map_l2
   g_scale:
   - 2.5
@@ -117,7 +71,11 @@ guiders:
   - 0.0
   kwargs: {}
 noise_rescaling_setup:
+  # вот тут менять
   type: range_other_on_cfg_norm
   init_setup:
   - 1.5
   - 1.5
+
+# [ ]: - не рескейлить (identity rescaler) (в noise rescaling_setup)
+# [ ]: K, V гайдить на стайл; Q - гайдить на контент: вместо A делать только Q, K, или V

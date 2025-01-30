@@ -164,6 +164,7 @@ class SelfAttnMapL2EnergyGuider(BaseGuider):
 
                 attention_probs = self.get_attention_scores(query, key, attention_mask)
                 if is_self:
+                    # XXX: вместо A делать только Q, K, или V
                     guider_self.output[f"{place_unet}_self"].append(attention_probs)
                 hidden_states = torch.bmm(attention_probs, value)
                 hidden_states = self.batch_to_head_dim(hidden_states)

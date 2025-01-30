@@ -89,6 +89,8 @@ def run_experiment(cfg: DictConfig):
         assert config['guiders'][style_g_ix]['name'] == 'style_features_map_l2'
         g_config = copy.deepcopy(config)
         for g_scale_ix in range(len(g_config['guiders'][style_g_ix]['g_scale'])):
+            if g_scale_ix < cfg['exp_configs']['style_guider_scale_n_iters']:
+                g_config['guiders'][style_g_ix]['g_scale'][g_scale_ix] = cfg['exp_configs']['style_guider_scale_default']
             g_config['guiders'][style_g_ix]['g_scale'][g_scale_ix] *= cfg['exp_configs']['style_guider_scale_multiplier']
 
         res = generate_single(
