@@ -76,7 +76,7 @@ def run_experiment(cfg: DictConfig):
 
     scheduler = get_scheduler(cfg['scheduler_name'])
     model = get_model(scheduler, cfg['model_name'], device)
-    config = OmegaConf.load(cfg['guidance_cfg'])
+    config = cfg['guidance_cfg']
 
     os.makedirs(os.path.join(run_path, 'output_imgs'))
 

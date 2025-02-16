@@ -439,15 +439,16 @@ class GuidanceEditing:
         # self.noise_rescaler
         for name, (guider, g_scale) in self.guiders.items():
             if guider.grad_guider:
-                cur_noise_pred = self._get_scale(g_scale, diffusion_iter) * guider(data_dict)
+                s = self._get_scale(g_scale, diffusion_iter)
+                cur_noise_pred = s * guider(data_dict)
                 noises[name] = cur_noise_pred
             else:
-                energy = self._get_scale(g_scale, diffusion_iter) * guider(data_dict)
+                s = self._get_scale(g_scale, diffusion_iter)
+                energy = s * guider(data_dict)
                 if not torch.allclose(energy, torch.tensor(0.)):
                     backward_guiders_sum += energy
                 # else:
                 #     print(f'[WARNING]: guider {name} has 0 energy')
-
         if hasattr(backward_guiders_sum, 'backward'):
             backward_guiders_sum.backward()
             noises['other'] = data_dict['latent'].grad

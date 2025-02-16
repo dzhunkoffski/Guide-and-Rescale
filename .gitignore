@@ -175,4 +175,5 @@ cython_debug/
 
 # Ignore hydra logging
 outputs
+hydra_multirun
 src

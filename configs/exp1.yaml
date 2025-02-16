@@ -10,33 +10,32 @@ hydra:
 device: cuda:0
 
 defaults:
-  - gidance_cfg: null
+  - guidance_cfg: exp2_ctrl_style
 
 scheduler_name: ddim_50_eps
 model_name: stable-diffusion-v1-4
-guidance_cfg: configs/exp1_ctrl_style.yaml
 
 samples:
   - cnt_img_path: data/content/face2.jpg
     cnt_prompt: A photo
     sty_img_path: data/style/moonk.jpg
     sty_prompt: Moonk's "The scream" painting
-    edit_prompt: ''
+    edit_prompt: Moonk's "The scream" painting
   - cnt_img_path: data/content/face2.jpg
     cnt_prompt: A photo
     sty_img_path: data/style/picasso.jpg
     sty_prompt: Picasso's painting
-    edit_prompt: ''
+    edit_prompt: Picasso's painting
   - cnt_img_path: data/content/square.png
     cnt_prompt: Picture of a primitive square shape
     sty_img_path: data/style/moonk.jpg
     sty_prompt: Moonk's "The scream" painting
-    edit_prompt: ''
+    edit_prompt: Moonk's "The scream" painting
   - cnt_img_path: data/content/square.png
     cnt_prompt: Picture of a primitive square shape
     sty_img_path: data/style/picasso.jpg
     sty_prompt: Picasso's painting
-    edit_prompt: ''
+    edit_prompt: Picasso's painting
 
 exp_configs:
   style_guider_ix: 2

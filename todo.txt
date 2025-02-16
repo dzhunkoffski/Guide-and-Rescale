@@ -1,4 +1,7 @@
-[ ]: Set of Experiments 1: eq. 13 but Phi* := Phi_style
-[ ]: Extract embeddings from style image and use them for prompting
-    (something like "Inversion-based Style Transfer with Diffusion Models")
-[ ]: Ablate AdaIn(z_cnt, z_sty) for start_latent
+[ ]: AdaIN experiment for StyleID
+[ ]: - не рескейлить (identity rescaler) (в noise rescaling_setup)
+[ ]: K, V гайдить на стайл; Q - гайдить на контент: вместо A делать только Q, K, или V
+
+# 05.02.25
+1) Exp2: воспроизвел старые экспы, но зафикисровал noise rescaling:
+    1.1 Пустая строка 0кфг: python run_experiment1.py -m exp_configs.style_guider_scale_multiplier=1.0,5.0,10.0,25.0,50.0,100.0,250.0,500.0,750.0,1000.0 device=cuda:3
