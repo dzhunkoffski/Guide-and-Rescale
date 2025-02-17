@@ -190,6 +190,7 @@ class GuidanceEditing:
             if hasattr(guider, 'model_patch'):
                 guider.clear_outputs()
 
+        # XXX: здесь инферится латент content изображения
         with torch.no_grad():
             inv_prompt_unet = unet_forward(
                 self.model,
@@ -447,8 +448,6 @@ class GuidanceEditing:
                 energy = s * guider(data_dict)
                 if not torch.allclose(energy, torch.tensor(0.)):
                     backward_guiders_sum += energy
-                # else:
-                #     print(f'[WARNING]: guider {name} has 0 energy')
         if hasattr(backward_guiders_sum, 'backward'):
             backward_guiders_sum.backward()
             noises['other'] = data_dict['latent'].grad

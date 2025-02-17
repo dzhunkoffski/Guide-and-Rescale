@@ -7,7 +7,7 @@ verbose: false
 edit_types: stylisation
 guiders:
 - name: cfg
-  g_scale: 0.0
+  g_scale: 7.5
   kwargs:
     is_source_guidance: false
 - name: self_attn_map_l2
@@ -117,6 +117,5 @@ guiders:
   - 0.0
   kwargs: {}
 noise_rescaling_setup:
-  # вот тут менять
   type: identity_rescaler
   init_setup: 1.0
