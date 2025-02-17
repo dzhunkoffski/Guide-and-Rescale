@@ -96,238 +96,34 @@ class FeaturesMapL2EnergyGuider(BaseGuider):
     def single_output_clear(self):
         None
 
-@opt_registry.add_to_registry('self_attn_q_l2')
-class SelfAttnQL2EnergyGuider(BaseGuider):
+@opt_registry.add_to_registry('self_attn_qkv_l2')
+class SelfAttnQKVL2EnergyGuider(BaseGuider):
     patched = True
-    forward_hooks = ['cur_inv', 'inv_inv']    
+    forward_hooks = ['cur_inv', 'inv_inv', 'sty_inv']
     def single_output_clear(self):
         return {
-            "down_q": [], "mid_q": [], "up_q": []
-        }
-    
-    def calc_energy(self, data_dict):
-        result = 0.
-        for unet_place, data in data_dict['self_attn_q_l2_cur_inv'].items():
-            for elem_idx, elem in enumerate(data):
-                result += torch.mean(
-                    torch.pow(
-                        elem - data_dict['self_attn_q_l2_inv_inv'][unet_place][elem_idx], 2
-                    )
-                )
-        self.single_output_clear()
-        return result
-    
-    def model_patch(guider_self, model, self_attn_layers_num=None):
-        def new_forward_info(self, place_unet):
-            def patched_forward(
-                hidden_states,
-                encoder_hidden_states=None,
-                attention_mask=None,
-                temb=None,
-            ):
-                residual = hidden_states
-
-                if self.spatial_norm is not None:
-                    hidden_states = self.spatial_norm(hidden_states, temb)
-
-                input_ndim = hidden_states.ndim
-
-                if input_ndim == 4:
-                    batch_size, channel, height, width = hidden_states.shape
-                    hidden_states = hidden_states.view(batch_size, channel, height * width).transpose(1, 2)
-
-                batch_size, sequence_length, _ = (
-                    hidden_states.shape if encoder_hidden_states is None else encoder_hidden_states.shape
-                )
-                attention_mask = self.prepare_attention_mask(attention_mask, sequence_length, batch_size)
-
-                if self.group_norm is not None:
-                    hidden_states = self.group_norm(hidden_states.transpose(1, 2)).transpose(1, 2)
-
-                query = self.to_q(hidden_states)
-                
-                ## Injection
-                is_self = encoder_hidden_states is None
-                
-                if encoder_hidden_states is None:
-                    encoder_hidden_states = hidden_states
-                elif self.norm_cross:
-                    encoder_hidden_states = self.norm_encoder_hidden_states(encoder_hidden_states)
-
-                key = self.to_k(encoder_hidden_states)
-                value = self.to_v(encoder_hidden_states)
-
-                query = self.head_to_batch_dim(query)
-                key = self.head_to_batch_dim(key)
-                value = self.head_to_batch_dim(value)
-
-                attention_probs = self.get_attention_scores(query, key, attention_mask)
-                if is_self:
-                    # HACK: сохраняю Q (разные части Downsample, Upsample, Middle blocks)
-                    guider_self.output[f"{place_unet}_q"].append(query)
-                hidden_states = torch.bmm(attention_probs, value)
-                hidden_states = self.batch_to_head_dim(hidden_states)
-
-                # linear proj
-                hidden_states = self.to_out[0](hidden_states)
-                # dropout
-                hidden_states = self.to_out[1](hidden_states)
-
-                if input_ndim == 4:
-                    hidden_states = hidden_states.transpose(-1, -2).reshape(batch_size, channel, height, width)
-
-                if self.residual_connection:
-                    hidden_states = hidden_states + residual
-
-                hidden_states = hidden_states / self.rescale_output_factor
-
-                return hidden_states
-            return patched_forward
-        
-        def register_attn(module, place_in_unet, layers_num, cur_layers_num=0):
-            if 'Attention' in module.__class__.__name__:
-                if 2 * layers_num[0] <= cur_layers_num < 2 * layers_num[1]:
-                    module.forward = new_forward_info(module, place_in_unet)
-                return cur_layers_num + 1
-            elif hasattr(module, 'children'):
-                for module_ in module.children():
-                    cur_layers_num = register_attn(module_, place_in_unet, layers_num, cur_layers_num)
-                return cur_layers_num
-        
-        sub_nets = model.unet.named_children()
-        for name, net in sub_nets:
-            if "down" in name:
-                register_attn(net, "down", self_attn_layers_num[0])
-            if "mid" in name:
-                register_attn(net, "mid", self_attn_layers_num[1])
-            if "up" in name:
-                register_attn(net, "up", self_attn_layers_num[2])
-
-@opt_registry.add_to_registry('self_attn_k_l2')
-class SelfAttnKL2EnergyGuider(BaseGuider):
-    patched = True
-    forward_hooks = ['cur_inv', 'sty_inv']
-    def single_output_clear(self):
-        return {
-            "down_k": [], "mid_k": [], "up_k": []
-        }
-    
-    def calc_energy(self, data_dict):
-        result = 0.
-        for unet_place, data in data_dict['self_attn_k_l2_cur_inv'].items():
-            for elem_idx, elem in enumerate(data):
-                result += torch.mean(
-                    torch.pow(
-                        elem - data_dict['self_attn_k_l2_sty_inv'][unet_place][elem_idx], 2
-                    )
-                )
-        self.single_output_clear()
-        return result
-    
-    def model_patch(guider_self, model, self_attn_layers_num=None):
-        def new_forward_info(self, place_unet):
-            def patched_forward(
-                hidden_states,
-                encoder_hidden_states=None,
-                attention_mask=None,
-                temb=None,
-            ):
-                residual = hidden_states
-
-                if self.spatial_norm is not None:
-                    hidden_states = self.spatial_norm(hidden_states, temb)
-
-                input_ndim = hidden_states.ndim
-
-                if input_ndim == 4:
-                    batch_size, channel, height, width = hidden_states.shape
-                    hidden_states = hidden_states.view(batch_size, channel, height * width).transpose(1, 2)
-
-                batch_size, sequence_length, _ = (
-                    hidden_states.shape if encoder_hidden_states is None else encoder_hidden_states.shape
-                )
-                attention_mask = self.prepare_attention_mask(attention_mask, sequence_length, batch_size)
-
-                if self.group_norm is not None:
-                    hidden_states = self.group_norm(hidden_states.transpose(1, 2)).transpose(1, 2)
-
-                query = self.to_q(hidden_states)
-                
-                ## Injection
-                is_self = encoder_hidden_states is None
-                
-                if encoder_hidden_states is None:
-                    encoder_hidden_states = hidden_states
-                elif self.norm_cross:
-                    encoder_hidden_states = self.norm_encoder_hidden_states(encoder_hidden_states)
-
-                key = self.to_k(encoder_hidden_states)
-                value = self.to_v(encoder_hidden_states)
-
-                query = self.head_to_batch_dim(query)
-                key = self.head_to_batch_dim(key)
-                value = self.head_to_batch_dim(value)
-
-                attention_probs = self.get_attention_scores(query, key, attention_mask)
-                if is_self:
-                    # HACK: сохраняю K (разные части Downsample, Upsample, Middle blocks)
-                    guider_self.output[f"{place_unet}_k"].append(key)
-                hidden_states = torch.bmm(attention_probs, value)
-                hidden_states = self.batch_to_head_dim(hidden_states)
-
-                # linear proj
-                hidden_states = self.to_out[0](hidden_states)
-                # dropout
-                hidden_states = self.to_out[1](hidden_states)
-
-                if input_ndim == 4:
-                    hidden_states = hidden_states.transpose(-1, -2).reshape(batch_size, channel, height, width)
-
-                if self.residual_connection:
-                    hidden_states = hidden_states + residual
-
-                hidden_states = hidden_states / self.rescale_output_factor
-
-                return hidden_states
-            return patched_forward
-        
-        def register_attn(module, place_in_unet, layers_num, cur_layers_num=0):
-            if 'Attention' in module.__class__.__name__:
-                if 2 * layers_num[0] <= cur_layers_num < 2 * layers_num[1]:
-                    module.forward = new_forward_info(module, place_in_unet)
-                return cur_layers_num + 1
-            elif hasattr(module, 'children'):
-                for module_ in module.children():
-                    cur_layers_num = register_attn(module_, place_in_unet, layers_num, cur_layers_num)
-                return cur_layers_num
-        
-        sub_nets = model.unet.named_children()
-        for name, net in sub_nets:
-            if "down" in name:
-                register_attn(net, "down", self_attn_layers_num[0])
-            if "mid" in name:
-                register_attn(net, "mid", self_attn_layers_num[1])
-            if "up" in name:
-                register_attn(net, "up", self_attn_layers_num[2])
-
-@opt_registry.add_to_registry('self_attn_v_l2')
-class SelfAttnVL2EnergyGuider(BaseGuider):
-    patched = True
-    forward_hooks = ['cur_inv', 'sty_inv']
-    def single_output_clear(self):
-        return {
+            "down_q": [], "mid_q": [], "up_q": [],
+            "down_k": [], "mid_k": [], "up_k": [],
             "down_v": [], "mid_v": [], "up_v": []
         }
     
     def calc_energy(self, data_dict):
         result = 0.
-        for unet_place, data in data_dict['self_attn_v_l2_cur_inv'].items():
-            for elem_idx, elem in enumerate(data):
-                result += torch.mean(
-                    torch.pow(
-                        elem - data_dict['self_attn_v_l2_sty_inv'][unet_place][elem_idx], 2
+        for unet_place, data in data_dict['self_attn_qkv_l2_cur_inv'].items():
+            if '_q' in unet_place:
+                for elem_idx, elem in enumerate(data):
+                    result += torch.mean(
+                        torch.pow(
+                            elem - data_dict['self_attn_qkv_l2_inv_inv'][unet_place][elem_idx], 2
+                        )
                     )
-                )
+            else:
+                for elem_idx, elem in enumerate(data):
+                    result += torch.mean(
+                        torch.pow(
+                            elem - data_dict['self_attn_qkv_l2_sty_inv'][unet_place][elem_idx], 2
+                        )
+                    )
         self.single_output_clear()
         return result
     
@@ -377,8 +173,11 @@ class SelfAttnVL2EnergyGuider(BaseGuider):
 
                 attention_probs = self.get_attention_scores(query, key, attention_mask)
                 if is_self:
-                    # HACK: сохраняю K (разные части Downsample, Upsample, Middle blocks)
-                    guider_self.output[f"{place_unet}_v"].append(key)
+                    # XXX: вместо A делать только Q, K, или V
+                    # guider_self.output[f"{place_unet}_self"].append(attention_probs)
+                    guider_self.output[f"{place_unet}_q"].append(query)
+                    guider_self.output[f"{place_unet}_k"].append(key)
+                    guider_self.output[f"{place_unet}_v"].append(value)
                 hidden_states = torch.bmm(attention_probs, value)
                 hidden_states = self.batch_to_head_dim(hidden_states)
 

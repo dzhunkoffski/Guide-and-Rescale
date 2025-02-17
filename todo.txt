@@ -8,5 +8,6 @@
 
 
 UPDATE: python run_experiment1.py -m run_name=editp_manual exp_configs.style_guider_scale_multiplier=1.0,1.75,2.5,3.75,5.0,10.0,25.0,50.0,75.0,100.0 device=cuda:3 samples=empty_prompt guidance_cfg.guiders.0.g_scale=0.0
-# 02.25
-2) 
+
+EXP 3:
+python run_exp3_sty.py -m run_name=test_qkv_sty exp_configs.style_guider_scale_multiplier=1000.0 guidance_cfg.guiders.0.g_scale=0.0 device=cuda:3

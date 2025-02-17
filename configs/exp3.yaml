@@ -11,7 +11,13 @@ device: cuda:0
 
 defaults:
   - guidance_cfg: exp3_ctrl_style
-  - samples: 
+  - samples: empty_prompt
 
 scheduler_name: ddim_50_eps
 model_name: stable-diffusion-v1-4
+
+exp_configs:
+  style_guider_ix: 1
+  style_guider_scale_multiplier: 1.0
+  style_guider_scale_default: 1.0
+  style_guider_scale_n_iters: 25
