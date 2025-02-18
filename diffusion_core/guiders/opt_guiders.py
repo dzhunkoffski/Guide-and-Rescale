@@ -118,8 +118,9 @@ class SelfAttnQKVL2EnergyGuider(BaseGuider):
                         )
                     )
             else:
+                # XXX: multiply by 0.5 (K, V)
                 for elem_idx, elem in enumerate(data):
-                    result += torch.mean(
+                    result += 0.5 * torch.mean(
                         torch.pow(
                             elem - data_dict['self_attn_qkv_l2_sty_inv'][unet_place][elem_idx], 2
                         )
