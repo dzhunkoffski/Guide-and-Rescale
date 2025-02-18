@@ -137,9 +137,21 @@ class GuidanceEditing:
         for g_name, (guider, _) in self.guiders.items():
             if hasattr(guider, 'model_patch'):
                 guider.model_patch(self.model, self_attn_layers_num=self.self_attn_layers_num)
-
+        
+        # [1, 4, 64, 64]
         self.start_latent = self.inv_latents[-1].clone()
-        # TODO: AdaIN(start_latent, ctrl_latent)
+
+        # print(f'---> START LATENT: {type(self.start_latent)}; {self.start_latent.size()}')
+
+        # XXX AdaIN(start_latent, ctrl_latent)
+        if 'apply_adain' in self.config and self.config.apply_adain == True:
+            start_sty_latent = self.inv_ctrl_latents[-1].clone()
+
+            cnt_mean = self.start_latent.mean(dim=[0, 2, 3], keepdim=True)
+            cnt_std = self.start_latent.std(dim=[0, 2, 3], keepdim=True)
+            sty_mean = start_sty_latent.mean(dim=[0, 2, 3], keepdim=True)
+            sty_std = start_sty_latent.std(dim=[0, 2, 3], keepdim=True)
+            self.start_latent = ((self.start_latent-cnt_mean)/cnt_std)*sty_std + sty_mean
 
         params = {
             'model': self.model,
