@@ -90,8 +90,10 @@ def run_experiment(cfg: DictConfig):
             g_name = guiders_names[i]
             assert config['guiders'][g_ix]['name'] == g_name, f"{config['guiders'][g_ix]['name']} != {g_name}"
             for g_scale_ix in range(len(g_config['guiders'][g_ix]['g_scale'])):
-                if g_scale_ix < cfg['exp_configs']['style_guider_scale_n_iters']:
+                if g_scale_ix - cfg['exp_configs']['style_guider_iter_start'] >= 0 and g_scale_ix - cfg['exp_configs']['style_guider_iter_start'] < cfg['exp_configs']['style_guider_scale_n_iters']:
                     g_config['guiders'][g_ix]['g_scale'][g_scale_ix] = cfg['exp_configs']['style_guider_scale_default']
+                else:
+                    g_config['guiders'][g_ix]['g_scale'][g_scale_ix] = 0.0
                 g_config['guiders'][g_ix]['g_scale'][g_scale_ix] *= cfg['exp_configs']['style_guider_scale_multiplier']
 
         res = generate_single(

@@ -98,6 +98,10 @@ class FeaturesMapL2EnergyGuider(BaseGuider):
 
 @opt_registry.add_to_registry('self_attn_qkv_l2')
 class SelfAttnQKVL2EnergyGuider(BaseGuider):
+    def __init__(self, kv_scale: float):
+        super().__init__()
+        self.kv_scale = kv_scale
+
     patched = True
     forward_hooks = ['cur_inv', 'inv_inv', 'sty_inv']
     def single_output_clear(self):
@@ -118,9 +122,9 @@ class SelfAttnQKVL2EnergyGuider(BaseGuider):
                         )
                     )
             else:
-                # XXX: multiply by 0.5 (K, V)
+                # XXX: multiply by 0.5 (K, V) -> multiply by kv_scale
                 for elem_idx, elem in enumerate(data):
-                    result += 0.5 * torch.mean(
+                    result += self.kv_scale * torch.mean(
                         torch.pow(
                             elem - data_dict['self_attn_qkv_l2_sty_inv'][unet_place][elem_idx], 2
                         )
