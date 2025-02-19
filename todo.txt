@@ -11,3 +11,5 @@ UPDATE: python run_experiment1.py -m run_name=editp_manual exp_configs.style_gui
 
 EXP 3:
 python run_exp3_sty.py -m run_name=test_qkv_sty exp_configs.style_guider_scale_multiplier=1000.0 guidance_cfg.guiders.0.g_scale=0.0 device=cuda:3
+
+# python run_exp3_sty.py run_name=test_kvscale exp_configs.style_guider_iter_start=0 exp_configs.style_guider_scale_multiplier=50.0 device=cuda:3 guidance_cfg.guiders.1.kwargs.kv_scale=1.0
