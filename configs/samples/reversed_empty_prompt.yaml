@@ -1,0 +1,20 @@
+- sty_img_path: data/content/face2.jpg
+  sty_prompt: A photo
+  cnt_img_path: data/style/moonk.jpg
+  cnt_prompt: Moonk's "The scream" painting
+  edit_prompt: ''
+- sty_img_path: data/content/face2.jpg
+  sty_prompt: A photo
+  cnt_img_path: data/style/picasso.jpg
+  cnt_prompt: Picasso's painting
+  edit_prompt: ''
+- sty_img_path: data/content/square.png
+  sty_prompt: Picture of a primitive square shape
+  cnt_img_path: data/style/moonk.jpg
+  cnt_prompt: Moonk's "The scream" painting
+  edit_prompt: ''
+- sty_img_path: data/content/square.png
+  sty_prompt: Picture of a primitive square shape
+  cnt_img_path: data/style/picasso.jpg
+  cnt_prompt: Picasso's painting
+  edit_prompt: ''

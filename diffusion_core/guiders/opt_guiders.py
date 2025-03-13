@@ -1,3 +1,6 @@
+import os
+import pickle
+
 import torch
 from typing import Optional
 
@@ -5,6 +8,8 @@ from diffusion_core.utils.class_registry import ClassRegistry
 from diffusion_core.guiders.scale_schedulers import last_steps, first_steps
 
 opt_registry = ClassRegistry()
+
+from utils.visualizers import visualize_self_attn
 
 class BaseGuider:
     def __init__(self):
@@ -98,21 +103,47 @@ class FeaturesMapL2EnergyGuider(BaseGuider):
 
 @opt_registry.add_to_registry('self_attn_qkv_l2')
 class SelfAttnQKVL2EnergyGuider(BaseGuider):
-    def __init__(self, kv_scale: float):
+    def __init__(self, kv_scale: float, save_data_dict: bool, save_data_dir: str):
         super().__init__()
         self.kv_scale = kv_scale
+
+        self.save_data_dict = save_data_dict
+        self.save_data_dir = save_data_dir
 
     patched = True
     forward_hooks = ['cur_inv', 'inv_inv', 'sty_inv']
     def single_output_clear(self):
         return {
+            "down_self": [], 'mid_self': [], 'up_self': [],
             "down_q": [], "mid_q": [], "up_q": [],
             "down_k": [], "mid_k": [], "up_k": [],
             "down_v": [], "mid_v": [], "up_v": []
         }
-    
+
     def calc_energy(self, data_dict):
         result = 0.
+        # XXX: save data_dict ot observe it later
+
+        # print(data_dict['self_attn_qkv_l2_inv_inv']['down_q'][4].size())
+        # assert False, 'stop'
+
+        if self.save_data_dict:
+            source = ['cur_inv', 'inv_inv', 'sty_inv']
+
+            unet_parts = [
+                'down_self', 'mid_self', 'up_self',
+                'down_q', 'mid_q', 'up_q',
+                'down_k', 'mid_k', 'up_k',
+                'down_v', 'mid_v', 'up_v'
+            ]
+            for d in source:
+                p = os.path.join(self.save_data_dir, d, str(data_dict['diff_iter']))
+                os.makedirs(p)
+                for part in unet_parts:
+                    for i in range(len(data_dict[f'self_attn_qkv_l2_{d}'][part])):
+                        img = visualize_self_attn(data_dict[f'self_attn_qkv_l2_{d}'][part][i])
+                        img.save(os.path.join(p, f'{part}_{i}.png'))
+
         for unet_place, data in data_dict['self_attn_qkv_l2_cur_inv'].items():
             if '_q' in unet_place:
                 for elem_idx, elem in enumerate(data):
@@ -121,7 +152,7 @@ class SelfAttnQKVL2EnergyGuider(BaseGuider):
                             elem - data_dict['self_attn_qkv_l2_inv_inv'][unet_place][elem_idx], 2
                         )
                     )
-            else:
+            elif '_k' or '_v' in unet_place:
                 # XXX: multiply by 0.5 (K, V) -> multiply by kv_scale
                 for elem_idx, elem in enumerate(data):
                     result += self.kv_scale * torch.mean(
@@ -133,6 +164,7 @@ class SelfAttnQKVL2EnergyGuider(BaseGuider):
         return result
     
     def model_patch(guider_self, model, self_attn_layers_num=None):
+        # XXX: `self_attn_layers_num` by default is [(0, 6), (0, 1), (0, 9)] i.e. all
         def new_forward_info(self, place_unet):
             def patched_forward(
                 hidden_states,
@@ -177,9 +209,11 @@ class SelfAttnQKVL2EnergyGuider(BaseGuider):
                 value = self.head_to_batch_dim(value)
 
                 attention_probs = self.get_attention_scores(query, key, attention_mask)
+                # XXX: explore attention_probs output
+                # print(place_unet, attention_probs.size())
                 if is_self:
                     # XXX: вместо A делать только Q, K, или V
-                    # guider_self.output[f"{place_unet}_self"].append(attention_probs)
+                    guider_self.output[f"{place_unet}_self"].append(attention_probs)
                     guider_self.output[f"{place_unet}_q"].append(query)
                     guider_self.output[f"{place_unet}_k"].append(key)
                     guider_self.output[f"{place_unet}_v"].append(value)

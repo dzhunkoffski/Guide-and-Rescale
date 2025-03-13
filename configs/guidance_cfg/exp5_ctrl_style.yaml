@@ -65,6 +65,8 @@ guiders:
   - 0.0
   kwargs:
     kv_scale: 0.5
+    save_data_dict: true
+    save_data_dir: 'bruh'
 noise_rescaling_setup:
   type: identity_rescaler
   init_setup: 1.0

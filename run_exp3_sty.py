@@ -88,6 +88,7 @@ def run_experiment(cfg: DictConfig):
         for i in range(len(guider_ixs)):
             g_ix = guider_ixs[i]
             g_name = guiders_names[i]
+
             assert config['guiders'][g_ix]['name'] == g_name, f"{config['guiders'][g_ix]['name']} != {g_name}"
             for g_scale_ix in range(len(g_config['guiders'][g_ix]['g_scale'])):
                 if g_scale_ix - cfg['exp_configs']['style_guider_iter_start'] >= 0 and g_scale_ix - cfg['exp_configs']['style_guider_iter_start'] < cfg['exp_configs']['style_guider_scale_n_iters']:
@@ -96,6 +97,11 @@ def run_experiment(cfg: DictConfig):
                     g_config['guiders'][g_ix]['g_scale'][g_scale_ix] = 0.0
                 g_config['guiders'][g_ix]['g_scale'][g_scale_ix] *= cfg['exp_configs']['style_guider_scale_multiplier']
 
+        # XXX: should be self_attn_qkv_l2
+        os.makedirs(os.path.join(run_path, 'unet_features', 'cur_inv'))
+        os.makedirs(os.path.join(run_path, 'unet_features', 'inv_inv'))
+        os.makedirs(os.path.join(run_path, 'unet_features', 'sty_inv'))
+        g_config['guiders'][1]['kwargs']['save_data_dir'] = os.path.join(run_path, 'unet_features')
         res = generate_single(
             edit_cfg=g_config, model=model,
             **sample_items

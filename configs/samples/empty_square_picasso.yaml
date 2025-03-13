@@ -1,0 +1,5 @@
+- cnt_img_path: data/content/square.png
+  cnt_prompt: Picture of a primitive square shape
+  sty_img_path: data/style/picasso.jpg
+  sty_prompt: Picasso's painting
+  edit_prompt: ''

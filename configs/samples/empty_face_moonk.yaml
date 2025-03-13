@@ -1,0 +1,5 @@
+- cnt_img_path: data/content/face2.jpg
+  cnt_prompt: A photo
+  sty_img_path: data/style/moonk.jpg
+  sty_prompt: Moonk's "The scream" painting
+  edit_prompt: ''
