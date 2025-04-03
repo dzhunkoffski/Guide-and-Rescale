@@ -1,0 +1,2 @@
+python run_experiment16.py -m run_name=latent_diff_exp16_3 exp_configs.style_guider_scale=0.4,0.6,0.8,1.0,1.2,1.4 exp_configs.content_guider_end=48 exp_configs.style_guider_start=45
+python run_experiment16.py -m run_name=latent_diff_exp16_3 exp_configs.style_guider_scale=0.4,0.6,0.8,1.0,1.2,1.4 exp_configs.content_guider_end=50 exp_configs.style_guider_start=45

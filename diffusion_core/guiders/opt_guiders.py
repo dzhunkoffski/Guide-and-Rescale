@@ -51,6 +51,14 @@ class LatentsDiffGuidance(BaseGuider):
     def grad_fn(self, data_dict):
         return 2 * (data_dict['latent'] - data_dict['inv_latent'])
 
+@opt_registry.add_to_registry('latents_sty_diff')
+class LatentsDiffStyleGuidance(BaseGuider):
+    """
+    \| z_t* - z_t \|^2_2
+    """
+    def grad_fn(self, data_dict):
+        return 2 * (data_dict['latent'] - data_dict['inv_ctrl_latent'])
+
 @opt_registry.add_to_registry('style_features_map_l2')
 class StyleFeaturesMapL2EnergyGuider(BaseGuider):
     def __init__(self, block='up'):
@@ -103,12 +111,19 @@ class FeaturesMapL2EnergyGuider(BaseGuider):
 
 @opt_registry.add_to_registry('self_attn_qkv_l2')
 class SelfAttnQKVL2EnergyGuider(BaseGuider):
-    def __init__(self, kv_scale: float, save_data_dict: bool, save_data_dir: str):
+    def __init__(
+            self, 
+            q_scale: float, kv_scale: float,
+            save_data_dict: bool, save_data_dir: str,
+            layers_num: dict):
         super().__init__()
+        self.q_scale = q_scale
         self.kv_scale = kv_scale
 
         self.save_data_dict = save_data_dict
         self.save_data_dir = save_data_dir
+
+        self.layers_num = layers_num
 
     patched = True
     forward_hooks = ['cur_inv', 'inv_inv', 'sty_inv']
@@ -147,7 +162,7 @@ class SelfAttnQKVL2EnergyGuider(BaseGuider):
         for unet_place, data in data_dict['self_attn_qkv_l2_cur_inv'].items():
             if '_q' in unet_place:
                 for elem_idx, elem in enumerate(data):
-                    result += torch.mean(
+                    result += self.q_scale * torch.mean(
                         torch.pow(
                             elem - data_dict['self_attn_qkv_l2_inv_inv'][unet_place][elem_idx], 2
                         )
@@ -213,10 +228,31 @@ class SelfAttnQKVL2EnergyGuider(BaseGuider):
                 # print(place_unet, attention_probs.size())
                 if is_self:
                     # XXX: вместо A делать только Q, K, или V
-                    guider_self.output[f"{place_unet}_self"].append(attention_probs)
-                    guider_self.output[f"{place_unet}_q"].append(query)
-                    guider_self.output[f"{place_unet}_k"].append(key)
-                    guider_self.output[f"{place_unet}_v"].append(value)
+                    # XXX: получаю текущий слой
+                    layer_ix = len(guider_self.output[f"{place_unet}_self"])
+                    t1, t2 = guider_self.layers_num[f'{place_unet}_self'][0], guider_self.layers_num[f'{place_unet}_self'][1]
+                    if layer_ix >= t1 and layer_ix < t2:
+                        guider_self.output[f"{place_unet}_self"].append(attention_probs)
+                    else:
+                        guider_self.output[f"{place_unet}_self"].append(torch.zeros_like(attention_probs))
+
+                    t1, t2 = guider_self.layers_num[f'{place_unet}_q'][0], guider_self.layers_num[f'{place_unet}_q'][1]
+                    if layer_ix >= t1 and layer_ix < t2:
+                        guider_self.output[f"{place_unet}_q"].append(query)
+                    else:
+                        guider_self.output[f'{place_unet}_q'].append(torch.zeros_like(query))
+
+                    t1, t2 = guider_self.layers_num[f'{place_unet}_k'][0], guider_self.layers_num[f'{place_unet}_k'][1]
+                    if layer_ix >= t1 and layer_ix < t2:
+                        guider_self.output[f"{place_unet}_k"].append(key)
+                    else:
+                        guider_self.output[f'{place_unet}_k'].append(torch.zeros_like(key))
+
+                    t1, t2 = guider_self.layers_num[f'{place_unet}_v'][0], guider_self.layers_num[f'{place_unet}_v'][1]
+                    if layer_ix >= t1 and layer_ix < t2:
+                        guider_self.output[f"{place_unet}_v"].append(value)
+                    else:
+                        guider_self.output[f"{place_unet}_v"].append(torch.zeros_like(value))
                 hidden_states = torch.bmm(attention_probs, value)
                 hidden_states = self.batch_to_head_dim(hidden_states)
 

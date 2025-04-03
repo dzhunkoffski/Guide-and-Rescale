@@ -49,23 +49,23 @@ def generate_single(
     res = Image.fromarray(res)
     return res
 
-@hydra.main(version_base=None, config_path='configs', config_name='exp3')
+@hydra.main(version_base=None, config_path='configs', config_name='exp16')
 def run_experiment(cfg: DictConfig):
     hydra_cfg = hydra.core.hydra_config.HydraConfig.get()
-    if hydra_cfg["mode"].name == "RUN":
-        run_path = hydra_cfg["run"]["dir"]
-    elif hydra_cfg["mode"].name == "MULTIRUN":
-        run_path = os.path.join(hydra_cfg["sweep"]["dir"], hydra_cfg["sweep"]["subdir"])
+    if hydra_cfg['mode'].name == 'RUN':
+        run_path = hydra_cfg['run']['dir']
+    elif hydra_cfg['mode'].name == 'MULTIRUN':
+        run_path = os.path.join(hydra_cfg['sweep']['dir'], hydra_cfg['sweep']['subdir'])
     else:
         raise NotImplementedError()
-
-    log(f'[INFO]: Experiment run directory: {run_path}')
+    
+    log(f'[INFO]: EXperiment run directory: {run_path}')
 
     if torch.cuda.is_available():
-        torch.cuda.set_device(cfg["device"])
+        torch.cuda.set_device(cfg['device'])
     use_deterministic()
 
-    device = torch.device(cfg["device"] if torch.cuda.is_available() else 'cpu')
+    device = torch.device(cfg['device'] if torch.cuda.is_available() else 'cpu')
 
     scheduler = get_scheduler(cfg['scheduler_name'])
     model = get_model(scheduler, cfg['model_name'], device)
@@ -80,35 +80,22 @@ def run_experiment(cfg: DictConfig):
 
         g_config = copy.deepcopy(config)
 
-        guider_ixs = [
-            cfg['exp_configs']['style_guider_ix'],
-        ]
-        guiders_names = ['self_attn_qkv_l2']
+        # Prepare content guider
+        log(f'Content guider: {g_config["guiders"][1]["name"]}')
+        for guiding_ix in range(cfg["exp_configs"]["content_guider_start"], cfg["exp_configs"]["content_guider_end"]):
+            g_config["guiders"][1]["g_scale"][guiding_ix] = cfg['exp_configs']['content_guider_scale']
+        log(f'Scales for content guider:\n{g_config["guiders"][1]["g_scale"]}')
 
-        for i in range(len(guider_ixs)):
-            g_ix = guider_ixs[i]
-            g_name = guiders_names[i]
+        # Prepare style guider
+        log(f'Style guider: {g_config["guiders"][2]["name"]}')
+        for guiding_ix in range(cfg['exp_configs']['style_guider_start'], cfg['exp_configs']['style_guider_end']):
+            g_config['guiders'][2]['g_scale'][guiding_ix] = cfg['exp_configs']['style_guider_scale']
+        log(f'Scales for content guider:\n{g_config["guiders"][2]["g_scale"]}')
 
-            assert config['guiders'][g_ix]['name'] == g_name, f"{config['guiders'][g_ix]['name']} != {g_name}"
-            for g_scale_ix in range(len(g_config['guiders'][g_ix]['g_scale'])):
-                if g_scale_ix - cfg['exp_configs']['style_guider_iter_start'] >= 0 and g_scale_ix - cfg['exp_configs']['style_guider_iter_start'] < cfg['exp_configs']['style_guider_scale_n_iters']:
-                    g_config['guiders'][g_ix]['g_scale'][g_scale_ix] = cfg['exp_configs']['style_guider_scale_default']
-                else:
-                    g_config['guiders'][g_ix]['g_scale'][g_scale_ix] = 0.0
-                g_config['guiders'][g_ix]['g_scale'][g_scale_ix] *= cfg['exp_configs']['style_guider_scale_multiplier']
-
-        # XXX: should be self_attn_qkv_l2
-        os.makedirs(os.path.join(run_path, f'{cnt_name}_{sty_name}___unet_features', 'cur_inv'))
-        os.makedirs(os.path.join(run_path, f'{cnt_name}_{sty_name}___unet_features', 'inv_inv'))
-        os.makedirs(os.path.join(run_path, f'{cnt_name}_{sty_name}___unet_features', 'sty_inv'))
-        g_config['guiders'][1]['kwargs']['save_data_dir'] = os.path.join(run_path, 'unet_features')
         res = generate_single(
-            edit_cfg=g_config, model=model,
-            **sample_items
+            edit_cfg=g_config, model=model, **sample_items
         )
-        res.save(
-            os.path.join(run_path, 'output_imgs', f'{cnt_name}___{sty_name}.png')
-        )
+        res.save(os.path.join(run_path, 'output_imgs', f'{cnt_name}___{sty_name}.png'))
 
 if __name__ == '__main__':
     run_experiment()
