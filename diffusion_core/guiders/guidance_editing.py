@@ -15,6 +15,16 @@ from diffusion_core.guiders.noise_rescales import noise_rescales
 from diffusion_core.inversion import Inversion, NullInversion, NegativePromptInversion
 from diffusion_core.utils import toggle_grad, use_grad_checkpointing
 
+import logging
+log = logging.getLogger(__name__)
+
+def adain(latent_ctrl: torch.Tensor, latent_sty: torch.Tensor):
+    ctrl_mean = latent_ctrl.mean(dim=[0,2,3], keepdim=True)
+    ctrl_std = latent_ctrl.std(dim=[0,2,3], keepdim=True)
+    sty_mean = latent_sty.mean(dim=[0,2,3], keepdim=True)
+    sty_std = latent_sty.std(dim=[0,2,3], keepdim=True)
+
+    return ((latent_ctrl - ctrl_mean)/ctrl_std) * sty_std + sty_mean
 
 class GuidanceEditing:
     def __init__(
@@ -144,14 +154,22 @@ class GuidanceEditing:
         # print(f'---> START LATENT: {type(self.start_latent)}; {self.start_latent.size()}')
 
         # XXX AdaIN(start_latent, ctrl_latent)
+        # apply_adain - whether to apply adain to initial latents or not
+        # adain_start_ix - first iteration after which adain is applied
+        # adain_end_ix - last+1 iteration after which adain is applied
         if 'apply_adain' in self.config and self.config.apply_adain == True:
             start_sty_latent = self.inv_ctrl_latents[-1].clone()
+            self.start_latent = adain(self.start_latent, start_sty_latent)
+        # if 'apply_adain' in self.config and self.config.apply_adain == True:
+        #     start_sty_latent = self.inv_ctrl_latents[-1].clone()
 
-            cnt_mean = self.start_latent.mean(dim=[0, 2, 3], keepdim=True)
-            cnt_std = self.start_latent.std(dim=[0, 2, 3], keepdim=True)
-            sty_mean = start_sty_latent.mean(dim=[0, 2, 3], keepdim=True)
-            sty_std = start_sty_latent.std(dim=[0, 2, 3], keepdim=True)
-            self.start_latent = ((self.start_latent-cnt_mean)/cnt_std)*sty_std + sty_mean
+        #     cnt_mean = self.start_latent.mean(dim=[0, 2, 3], keepdim=True)
+        #     cnt_std = self.start_latent.std(dim=[0, 2, 3], keepdim=True)
+        #     sty_mean = start_sty_latent.mean(dim=[0, 2, 3], keepdim=True)
+        #     sty_std = start_sty_latent.std(dim=[0, 2, 3], keepdim=True)
+        #     self.start_latent = ((self.start_latent-cnt_mean)/cnt_std)*sty_std + sty_mean
+
+        # log.info(f'start latent size: {self.start_latent.size()}')
 
         params = {
             'model': self.model,
@@ -284,12 +302,18 @@ class GuidanceEditing:
         ):
             # 1. Construct dict
             data_dict = self._construct_data_dict_stylisation(latents, i, timestep)
+            # log.info(data_dict.keys())
 
             # 2. Calculate guidance
             noise_pred = self._get_noise(data_dict, i)
 
             # 3. Scheduler step
             latents = self._step(noise_pred, timestep, latents)
+            # log.info(f'sty lat:{data_dict["inv_ctrl_latent"].size()}')
+            if i >= self.config.adain_start_ix and i < self.config.adain_end_ix:
+                log.info(f'{i}')
+                latents = adain(latents, data_dict['inv_ctrl_latent'])
+            # log.info(latents.size())
 
         self._model_unpatch(self.model)
         return latent2image(latents, self.model)[0]
