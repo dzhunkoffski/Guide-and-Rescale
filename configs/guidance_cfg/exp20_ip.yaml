@@ -1,0 +1,14 @@
+scheduler_type: ddim_50_eps
+inversion_type: dummy
+model_name: stable-diffusion-v1-5
+pipeline_type: ours
+start_latent: inversion
+verbose: false
+guiders:
+    - name: cfg
+      g_scale: 7.5
+      kwargs:
+        is_source_guidance: false
+noise_rescaling_setup:
+  type: identity_rescaler
+  init_setup: 1.0

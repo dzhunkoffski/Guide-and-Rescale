@@ -268,6 +268,7 @@ class GuidanceEditing:
                     data_dict.update({f"{g_name}_cur_inv": guider.output})
                 guider.clear_outputs()
 
+        # XXX: different in crossattn kwargs (compared to MaterialFusion)
         trg_prompt_unet = unet_forward(
             self.model,
             data_dict['latent'],

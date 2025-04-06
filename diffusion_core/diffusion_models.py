@@ -31,3 +31,5 @@ def read_v21(scheduler):
         model_id, torch_dtype=torch.float32, scheduler=scheduler
     )
     return model
+
+# @diffusion_models_registry.add_to_registry("")
