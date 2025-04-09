@@ -231,10 +231,10 @@ class SelfAttnQKVL2EnergyGuider(BaseGuider):
                     # XXX: получаю текущий слой
                     layer_ix = len(guider_self.output[f"{place_unet}_self"])
                     t1, t2 = guider_self.layers_num[f'{place_unet}_self'][0], guider_self.layers_num[f'{place_unet}_self'][1]
-                    if layer_ix >= t1 and layer_ix < t2:
-                        guider_self.output[f"{place_unet}_self"].append(attention_probs)
-                    else:
-                        guider_self.output[f"{place_unet}_self"].append(torch.zeros_like(attention_probs))
+                    # if layer_ix >= t1 and layer_ix < t2:
+                    #     guider_self.output[f"{place_unet}_self"].append(attention_probs)
+                    # else:
+                    #     guider_self.output[f"{place_unet}_self"].append(torch.zeros_like(attention_probs))
 
                     t1, t2 = guider_self.layers_num[f'{place_unet}_q'][0], guider_self.layers_num[f'{place_unet}_q'][1]
                     if layer_ix >= t1 and layer_ix < t2:
