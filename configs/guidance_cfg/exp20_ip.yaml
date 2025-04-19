@@ -9,6 +9,13 @@ guiders:
       g_scale: 7.5
       kwargs:
         is_source_guidance: false
+    - name: self_attn_map_l2_appearance
+      g_scale: 1.
+      kwargs:
+        self_attn_gs: 700000. #300000.
+        app_gs: 1500. #500.
+        new_features: true
+        total_first_steps: 30
 noise_rescaling_setup:
   type: identity_rescaler
   init_setup: 1.0

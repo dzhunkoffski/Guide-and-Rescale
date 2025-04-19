@@ -124,6 +124,7 @@ class GuidanceEditing:
     ):
         self.init_prompt_stylisation(inv_prompt, trg_prompt, inv_control_image_prompt)
         self.verbose = verbose
+        self.sty_image = control_image
 
         image_gt = np.array(image_gt)
         image_ctrl = np.array(control_image)
@@ -193,6 +194,8 @@ class GuidanceEditing:
         if self.uncond_embeddings is not None:
             uncond_emb = self.uncond_embeddings[diffusion_iter]
 
+        # log.info(f'---> {self.model.scheduler.alphas_cumprod.size()}')
+
         data_dict = {
             'latent': latents,
             'inv_latent': self.inv_latents[-diffusion_iter - 1],
@@ -203,7 +206,9 @@ class GuidanceEditing:
             'trg_emb': trg_prompt_emb,
             'inv_emb': inv_prompt_emb,
             'inv_ctrl_emb': inv_ctrl_prompt_emb,
-            'diff_iter': diffusion_iter
+            'diff_iter': diffusion_iter,
+            'alpha_t': self.model.scheduler.alphas_cumprod[timestep],
+            'sty_img': self.sty_image
         }
 
         with torch.no_grad():
@@ -286,7 +291,15 @@ class GuidanceEditing:
         data_dict.update({
             'uncond_unet': uncond_unet,
             'trg_prompt_unet': trg_prompt_unet,
+            'sty_unet': inv_style_unet
         })
+
+        # z0_approx_cur = (data_dict['latent'] - torch.sqrt(1 - data_dict['timestep']) * data_dict['trg_prompt_unet']) / torch.sqrt(data_dict['timestep'])
+        # img_approx_cur = latent2image(z0_approx_cur, self.model)[0]
+
+        # z0_approx_sty = (data_dict['inv_ctrl_latent'] - torch.sqrt(1 - data_dict['timestep']) * data_dict['sty_unet']) / torch.sqrt(data_dict['timestep'])
+        # img_approx_sty = latent2image(z0_approx_sty, self.model)[0]
+
 
         return data_dict
 
@@ -304,6 +317,7 @@ class GuidanceEditing:
             # 1. Construct dict
             data_dict = self._construct_data_dict_stylisation(latents, i, timestep)
             # log.info(data_dict.keys())
+            # log.info(data_dict['timestep'])
 
             # 2. Calculate guidance
             noise_pred = self._get_noise(data_dict, i)
@@ -483,11 +497,16 @@ class GuidanceEditing:
             else:
                 s = self._get_scale(g_scale, diffusion_iter)
                 energy = s * guider(data_dict)
+                log.info(energy)
                 if not torch.allclose(energy, torch.tensor(0.)):
                     backward_guiders_sum += energy
         if hasattr(backward_guiders_sum, 'backward'):
             backward_guiders_sum.backward()
             noises['other'] = data_dict['latent'].grad
+
+        log.info(f'Uncond norm: {torch.norm(noises["uncond"])}')
+        if 'other' in noises:
+            log.info(f'Others norm: {torch.norm(noises["other"])}')
 
         scales = self.noise_rescaler(noises, index)
         noise_pred = sum(scales[k] * noises[k] for k in noises)

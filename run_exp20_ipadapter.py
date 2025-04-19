@@ -84,6 +84,10 @@ def run_experiment(cfg: DictConfig):
         log.info(f'Processing cnt={cnt_name}; sty={sty_name}')
 
         g_config = copy.deepcopy(config)
+        log.info(f'Attention guider: {g_config["guiders"][1]["name"]}')
+        # for guiding_ix in range(cfg["exp_configs"]["attn_guider_start"], cfg["exp_configs"]["attn_guider_end"]):
+        #     g_config["guiders"][1]["g_scale"][guiding_ix] = cfg["exp_configs"]["attn_guider_scale"]
+        # log.info(f'Scales for attn guider:\n{g_config["guiders"][1]["g_scale"]}')
         res = generate_single(
             exp_cfg=cfg, edit_cfg=g_config, device=device, model=ldm_stable, **sample_items
         )

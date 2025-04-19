@@ -65,7 +65,7 @@ guiders:
   - 0.0
   - 0.0
   kwargs: {}
-- name: latents_sty_diff
+- name: clip_sty_diff_v2
   g_scale:
   - 0.0
   - 0.0
@@ -117,7 +117,10 @@ guiders:
   - 0.0
   - 0.0
   - 0.0
-  kwargs: {}
+  kwargs:
+    dist: cos
+    clip_id: openai/clip-vit-base-patch16
+    device: cuda:0
 noise_rescaling_setup:
   type: identity_rescaler
   init_setup: 1.0

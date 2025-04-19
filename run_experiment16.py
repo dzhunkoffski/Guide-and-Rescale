@@ -18,10 +18,8 @@ from diffusion_core.guiders import GuidanceEditing
 from diffusion_core.utils import load_512, use_deterministic
 from diffusion_core import diffusion_models_registry, diffusion_schedulers_registry
 
-def log(msg: str):
-    now = datetime.now()
-    dt_string = now.strftime("%d/%m/%Y %H:%M:%S")
-    print(f'{dt_string} === {msg}')
+import logging
+log = logging.getLogger(__name__)
 
 def get_scheduler(scheduler_name):
     if scheduler_name not in diffusion_schedulers_registry:
@@ -58,8 +56,8 @@ def run_experiment(cfg: DictConfig):
         run_path = os.path.join(hydra_cfg['sweep']['dir'], hydra_cfg['sweep']['subdir'])
     else:
         raise NotImplementedError()
-    
-    log(f'[INFO]: EXperiment run directory: {run_path}')
+
+    log.info(f'[INFO]: EXperiment run directory: {run_path}')
 
     if torch.cuda.is_available():
         torch.cuda.set_device(cfg['device'])
@@ -74,23 +72,24 @@ def run_experiment(cfg: DictConfig):
     os.makedirs(os.path.join(run_path, 'output_imgs'))
 
     for sample_items in cfg['samples']:
+        torch.cuda.empty_cache()
         cnt_name = Path(sample_items['cnt_img_path']).stem
         sty_name = Path(sample_items['sty_img_path']).stem
-        log(f'Processing cnt={cnt_name}; sty={sty_name}')
+        log.info(f'Processing cnt={cnt_name}; sty={sty_name}')
 
         g_config = copy.deepcopy(config)
 
         # Prepare content guider
-        log(f'Content guider: {g_config["guiders"][1]["name"]}')
+        log.info(f'Content guider: {g_config["guiders"][1]["name"]}')
         for guiding_ix in range(cfg["exp_configs"]["content_guider_start"], cfg["exp_configs"]["content_guider_end"]):
             g_config["guiders"][1]["g_scale"][guiding_ix] = cfg['exp_configs']['content_guider_scale']
-        log(f'Scales for content guider:\n{g_config["guiders"][1]["g_scale"]}')
+        log.info(f'Scales for content guider:\n{g_config["guiders"][1]["g_scale"]}')
 
         # Prepare style guider
-        log(f'Style guider: {g_config["guiders"][2]["name"]}')
+        log.info(f'Style guider: {g_config["guiders"][2]["name"]}')
         for guiding_ix in range(cfg['exp_configs']['style_guider_start'], cfg['exp_configs']['style_guider_end']):
             g_config['guiders'][2]['g_scale'][guiding_ix] = cfg['exp_configs']['style_guider_scale']
-        log(f'Scales for style guider:\n{g_config["guiders"][2]["g_scale"]}')
+        log.info(f'Scales for style guider:\n{g_config["guiders"][2]["g_scale"]}')
 
         res = generate_single(
             edit_cfg=g_config, model=model, **sample_items

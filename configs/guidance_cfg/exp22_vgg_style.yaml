@@ -65,7 +65,7 @@ guiders:
   - 0.0
   - 0.0
   kwargs: {}
-- name: latents_sty_diff
+- name: perceptual_style_guider
   g_scale:
   - 0.0
   - 0.0
@@ -117,7 +117,11 @@ guiders:
   - 0.0
   - 0.0
   - 0.0
-  kwargs: {}
+  kwargs:
+    style_layers:
+      - conv_1
+      - conv_2
+      - conv_3
 noise_rescaling_setup:
   type: identity_rescaler
   init_setup: 1.0

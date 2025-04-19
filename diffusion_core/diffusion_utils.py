@@ -14,7 +14,6 @@ def latent2image(latents, model, return_type='np'):
         image = (image * 255).astype(np.uint8)
     return image
 
-
 @torch.no_grad()
 def image2latent(image, model):
     if type(image) is Image:

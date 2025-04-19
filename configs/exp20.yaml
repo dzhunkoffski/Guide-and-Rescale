@@ -16,4 +16,7 @@ image_encoder_path: ./IP-Adapter/models/image_encoder
 ip_ckpt: ./IP-Adapter/models/ip-adapter_sd15.bin
 
 exp_configs:
-  ip_scale: 0.5
+  ip_scale: 0.75
+  attn_guider_start: 25
+  attn_guider_end: 50
+  attn_guider_scale: 1.0

@@ -1,15 +1,32 @@
 import os
 import pickle
+from typing import List
 
 import torch
-from typing import Optional
+from torch import nn
+import torch.nn.functional as F
+from typing import Optional, Literal
+import torchvision
+import torchvision.transforms as T
+from torchvision.models import vgg19, VGG19_Weights
 
 from diffusion_core.utils.class_registry import ClassRegistry
 from diffusion_core.guiders.scale_schedulers import last_steps, first_steps
+from diffusion_core.diffusion_utils import latent2image, image2latent
+
+from transformers import (
+    CLIPTokenizer,
+    CLIPTextModelWithProjection,
+    CLIPVisionModelWithProjection,
+    CLIPImageProcessor,
+)
 
 opt_registry = ClassRegistry()
 
 from utils.visualizers import visualize_self_attn
+
+import logging
+log = logging.getLogger(__name__)
 
 class BaseGuider:
     def __init__(self):
@@ -93,7 +110,7 @@ class FeaturesMapL2EnergyGuider(BaseGuider):
     forward_hooks = ['cur_trg', 'inv_inv']
     def calc_energy(self, data_dict):
         return torch.mean(torch.pow(data_dict['features_map_l2_cur_trg'] - data_dict['features_map_l2_inv_inv'], 2))
-    
+
     # XXX: model_patch - ???
     # XXX: register_foward_hook - ???
     def model_patch(self, model, self_attn_layers_num=None):
@@ -105,9 +122,145 @@ class FeaturesMapL2EnergyGuider(BaseGuider):
             model.unet.up_blocks[1].resnets[1].register_forward_hook(hook_fn)
         elif self.block == 'down':
             model.unet.down_blocks[1].resnets[1].register_forward_hook(hook_fn)
-    
+
     def single_output_clear(self):
         None
+
+class StyleLoss(nn.Module):
+    def __init__(self, target_feature):
+        super(StyleLoss, self).__init__()
+        self.target = self.gram_matrix(target_feature).detach()
+
+    def gram_matrix(self, input):
+        a, b, c, d = input.size()
+        features = input.view(a * b, c * d)
+        G = torch.mm(features, features.t())
+        return G.div(a * b * c * d)
+
+    def forward(self, input):
+        G = self.gram_matrix(input)
+        self.loss = F.mse_loss(G, self.target)
+        return input
+
+@opt_registry.add_to_registry('perceptual_style_guider')
+class PerceptualStyleGuider(BaseGuider):
+    def __init__(self, style_layers):
+        self.t = T.Compose([
+            T.Resize(256, interpolation=T.InterpolationMode.BILINEAR),
+            T.CenterCrop(224),
+            T.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))
+        ])
+        self.encoder = vgg19(weights=VGG19_Weights.DEFAULT).features.eval()
+        self.style_layers = style_layers
+
+    def single_output_clear(self):
+        None
+
+    def calc_energy(self, data_dict):
+        z0_approx_cur = (data_dict['latent'] - torch.sqrt(1 - data_dict['alpha_t']) * data_dict['trg_prompt_unet']) / torch.sqrt(data_dict['alpha_t'])
+        img_approx_cur = z0_approx_cur / data_dict['model'].vae.config.scaling_factor
+        img_approx_cur = (data_dict['model'].vae.decode(img_approx_cur)['sample'] + 1) / 2
+        img_approx_cur = img_approx_cur.clamp(0, 1)
+        img_approx_cur = self.t(img_approx_cur)
+
+        img_approx_sty = T.ToTensor()(data_dict['sty_img']).to(img_approx_cur.device).unsqueeze(0)
+        img_approx_sty = self.t(img_approx_sty)
+
+        model = nn.Sequential(nn.Identity())
+        style_losses = []
+        layer_ix = 0
+        for layer in self.encoder.children():
+            if isinstance(layer, nn.Conv2d):
+                layer_ix += 1
+                name = 'conv_{}'.format(layer_ix)
+            elif isinstance(layer, nn.ReLU):
+                name = 'relu_{}'.format(layer_ix)
+                layer = nn.ReLU(inplace=False)
+            elif isinstance(layer, nn.MaxPool2d):
+                name = 'pool_{}'.format(layer_ix)
+            elif isinstance(layer, nn.BatchNorm2d):
+                name = 'bn_{}'.format(layer_ix)
+            else:
+                raise RuntimeError('Unrecognized layer: {}'.format(layer.__class__.__name__))
+            layer = layer.to(img_approx_cur.device)
+            model.add_module(name, layer)
+
+            if name in self.style_layers:
+                # print(model)
+                sty_feature = model(img_approx_sty).detach()
+                stloss = StyleLoss(sty_feature)
+                stloss.target = stloss.target.to(img_approx_cur.device)
+                model.add_module("style_loss_{}".format(layer_ix), stloss)
+                style_losses.append(stloss)
+        model = model.to(img_approx_cur.device)
+        model(img_approx_cur)
+        style_loss = 0.0
+        for sl in style_losses:
+            style_loss += sl.loss
+        return style_loss
+
+@opt_registry.add_to_registry('clip_sty_diff_v1')
+class ClipStyDiffGuidanceV1(BaseGuider):
+    def __init__(self, dist: Literal['l1', 'l2', 'cos'], clip_id: str, device: str):
+        self.dist = dist
+        self.clip_encoder = CLIPVisionModelWithProjection.from_pretrained(clip_id).to(device)
+        self.t = T.Compose([
+            T.Resize(224, interpolation=torchvision.transforms.InterpolationMode.BICUBIC),
+            T.CenterCrop(224),
+            T.Normalize((0.48145466, 0.4578275, 0.40821073), (0.26862954, 0.26130258, 0.27577711))
+        ])
+
+    def single_output_clear(self):
+        None
+
+    def calc_energy(self, data_dict):
+        z0_approx_cur = (data_dict['latent'] - torch.sqrt(1 - data_dict['alpha_t']) * data_dict['trg_prompt_unet']) / torch.sqrt(data_dict['alpha_t'])
+        img_approx_cur = z0_approx_cur / data_dict['model'].vae.config.scaling_factor
+        img_approx_cur = (data_dict['model'].vae.decode(img_approx_cur)['sample'] + 1) / 2
+        img_approx_cur = img_approx_cur.clamp(0, 1)
+        img_approx_cur = self.t(img_approx_cur)
+        img_approx_cur = self.clip_encoder(pixel_values=img_approx_cur).image_embeds
+
+        z0_approx_sty = (data_dict['inv_ctrl_latent'] - torch.sqrt(1 - data_dict['alpha_t']) * data_dict['sty_unet']) / torch.sqrt(data_dict['alpha_t'])
+        img_approx_sty = z0_approx_sty / data_dict['model'].vae.config.scaling_factor
+        img_approx_sty = (data_dict['model'].vae.decode(img_approx_sty)['sample'] + 1) / 2
+        img_approx_sty = img_approx_sty.clamp(0,1)
+        img_approx_sty = self.t(img_approx_sty)
+        img_approx_sty = self.clip_encoder(pixel_values=img_approx_sty).image_embeds
+
+        if self.dist == 'l1':
+            return torch.mean(torch.pow(img_approx_cur - img_approx_sty, 1))
+        elif self.dist == 'l2':
+            return torch.mean(torch.pow(img_approx_cur - img_approx_sty, 2))
+        
+        img_approx_cur = img_approx_cur / img_approx_cur.norm(dim=1, keepdim=True)
+        img_approx_sty = img_approx_sty / img_approx_sty.norm(dim=1, keepdim=True)
+        return -F.cosine_similarity(img_approx_cur, img_approx_sty).sum()
+
+@opt_registry.add_to_registry('clip_sty_diff_v2')
+class ClipStyDiffGuidanceV2(ClipStyDiffGuidanceV1):
+    def calc_energy(self, data_dict):
+        z0_approx_cur = (data_dict['latent'] - torch.sqrt(1 - data_dict['alpha_t']) * data_dict['trg_prompt_unet']) / torch.sqrt(data_dict['alpha_t'])
+        img_approx_cur = z0_approx_cur / data_dict['model'].vae.config.scaling_factor
+        img_approx_cur = (data_dict['model'].vae.decode(img_approx_cur)['sample'] + 1) / 2
+        img_approx_cur = img_approx_cur.clamp(0, 1)
+        img_approx_cur = self.t(img_approx_cur)
+        # log.info(f'cur {img_approx_cur.size()}')
+        img_approx_cur = self.clip_encoder(pixel_values=img_approx_cur).image_embeds
+
+        img_approx_sty = T.ToTensor()(data_dict['sty_img']).to(img_approx_cur.device).unsqueeze(0)
+        img_approx_sty = self.t(img_approx_sty)
+        # log.info(f'sty {img_approx_sty.size()}')
+        img_approx_sty = self.clip_encoder(pixel_values=img_approx_sty).image_embeds
+
+        if self.dist == 'l1':
+            return torch.mean(torch.pow(img_approx_cur - img_approx_sty, 1))
+        elif self.dist == 'l2':
+            return torch.mean(torch.pow(img_approx_cur - img_approx_sty, 2))
+        
+        img_approx_cur = img_approx_cur / img_approx_cur.norm(dim=1, keepdim=True)
+        img_approx_sty = img_approx_sty / img_approx_sty.norm(dim=1, keepdim=True)
+        return -F.cosine_similarity(img_approx_cur, img_approx_sty).sum()
 
 @opt_registry.add_to_registry('self_attn_qkv_l2')
 class SelfAttnQKVL2EnergyGuider(BaseGuider):
