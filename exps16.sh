@@ -1,2 +1,1 @@
-python run_experiment16.py -m run_name=latent_diff_exp16_3 exp_configs.style_guider_scale=0.4,0.6,0.8,1.0,1.2,1.4 exp_configs.content_guider_end=48 exp_configs.style_guider_start=45
-python run_experiment16.py -m run_name=latent_diff_exp16_3 exp_configs.style_guider_scale=0.4,0.6,0.8,1.0,1.2,1.4 exp_configs.content_guider_end=50 exp_configs.style_guider_start=45
+python run_experiment16.py -m run_name=exp21_clip exp_configs.content_guider_end=50 exp_configs.content_guider_scale=0 samples=empty_prompt_empty_style exp_configs.style_guider_scale=1000.0,1250.0,1500.0,1750.0,2000.0,2500.0,3000.0,3500.0,4000.0 device=cuda:3 exp_configs.style_guider_start=25 guidance_cfg=exp21_clip_style

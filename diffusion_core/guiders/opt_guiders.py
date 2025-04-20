@@ -126,9 +126,9 @@ class FeaturesMapL2EnergyGuider(BaseGuider):
     def single_output_clear(self):
         None
 
-class StyleLoss(nn.Module):
+class StyleLossG(nn.Module):
     def __init__(self, target_feature):
-        super(StyleLoss, self).__init__()
+        super(StyleLossG, self).__init__()
         self.target = self.gram_matrix(target_feature).detach()
 
     def gram_matrix(self, input):
@@ -142,9 +142,18 @@ class StyleLoss(nn.Module):
         self.loss = F.mse_loss(G, self.target)
         return input
 
+class StyleLoss(nn.Module):
+    def __init__(self, target_feature):
+        super(StyleLoss, self).__init__()
+        self.target = target_feature
+
+    def forward(self, input):
+        self.loss = F.mse_loss(input, self.target)
+        return input
+
 @opt_registry.add_to_registry('perceptual_style_guider')
 class PerceptualStyleGuider(BaseGuider):
-    def __init__(self, style_layers):
+    def __init__(self, style_layers, apply_gramm: bool = True):
         self.t = T.Compose([
             T.Resize(256, interpolation=T.InterpolationMode.BILINEAR),
             T.CenterCrop(224),
@@ -152,6 +161,7 @@ class PerceptualStyleGuider(BaseGuider):
         ])
         self.encoder = vgg19(weights=VGG19_Weights.DEFAULT).features.eval()
         self.style_layers = style_layers
+        self.apply_gramm = apply_gramm
 
     def single_output_clear(self):
         None
@@ -188,7 +198,10 @@ class PerceptualStyleGuider(BaseGuider):
             if name in self.style_layers:
                 # print(model)
                 sty_feature = model(img_approx_sty).detach()
-                stloss = StyleLoss(sty_feature)
+                if self.apply_gramm:
+                    stloss = StyleLossG(sty_feature)
+                else:
+                    stloss = StyleLoss(sty_feature)
                 stloss.target = stloss.target.to(img_approx_cur.device)
                 model.add_module("style_loss_{}".format(layer_ix), stloss)
                 style_losses.append(stloss)
@@ -252,14 +265,17 @@ class ClipStyDiffGuidanceV2(ClipStyDiffGuidanceV1):
         img_approx_sty = self.t(img_approx_sty)
         # log.info(f'sty {img_approx_sty.size()}')
         img_approx_sty = self.clip_encoder(pixel_values=img_approx_sty).image_embeds
-
-        if self.dist == 'l1':
-            return torch.mean(torch.pow(img_approx_cur - img_approx_sty, 1))
-        elif self.dist == 'l2':
-            return torch.mean(torch.pow(img_approx_cur - img_approx_sty, 2))
         
         img_approx_cur = img_approx_cur / img_approx_cur.norm(dim=1, keepdim=True)
-        img_approx_sty = img_approx_sty / img_approx_sty.norm(dim=1, keepdim=True)
+        img_approx_sty = (img_approx_sty / img_approx_sty.norm(dim=1, keepdim=True)).detach()
+        # if self.dist == 'l1':
+        #     return torch.mean(torch.pow(img_approx_cur - img_approx_sty, 1))
+        # elif self.dist == 'l2':
+        #     return torch.mean(torch.pow(img_approx_cur - img_approx_sty, 2))
+        if self.dist == 'l1':
+            return F.l1_loss(img_approx_cur, img_approx_sty)
+        if self.dist == 'l2':
+            return F.mse_loss(img_approx_cur, img_approx_sty)
         return -F.cosine_similarity(img_approx_cur, img_approx_sty).sum()
 
 @opt_registry.add_to_registry('self_attn_qkv_l2')

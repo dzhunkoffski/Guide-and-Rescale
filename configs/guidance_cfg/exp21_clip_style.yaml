@@ -118,9 +118,9 @@ guiders:
   - 0.0
   - 0.0
   kwargs:
-    dist: cos
+    dist: l2
     clip_id: openai/clip-vit-base-patch16
-    device: cuda:0
+    device: cuda:3
 noise_rescaling_setup:
   type: identity_rescaler
   init_setup: 1.0
