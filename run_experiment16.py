@@ -34,12 +34,12 @@ def get_model(scheduler, model_name, device):
 
 def generate_single(
         cnt_img_path: str, cnt_prompt: str,
-        sty_img_path: str, sty_prompt: str,
+        sty_img_path: str, sty_prompt: str, root_path: str,
         edit_prompt: str, edit_cfg: DictConfig, model: nn.Module):
     cnt_img = Image.fromarray(load_512(cnt_img_path))
     sty_img = Image.fromarray(load_512(sty_img_path))
 
-    guidance = GuidanceEditing(model, edit_cfg)
+    guidance = GuidanceEditing(model, edit_cfg, root_path=root_path)
     res = guidance.call_stylisation(
         image_gt=cnt_img, inv_prompt=cnt_prompt, trg_prompt=edit_prompt,
         control_image=sty_img, inv_control_prompt=sty_prompt, verbose=True
@@ -91,8 +91,11 @@ def run_experiment(cfg: DictConfig):
             g_config['guiders'][2]['g_scale'][guiding_ix] = cfg['exp_configs']['style_guider_scale']
         log.info(f'Scales for style guider:\n{g_config["guiders"][2]["g_scale"]}')
 
+        os.makedirs(os.path.join(run_path, f'{cnt_name}___{sty_name}'), exist_ok=True)
         res = generate_single(
-            edit_cfg=g_config, model=model, **sample_items
+            edit_cfg=g_config, model=model,
+            root_path=os.path.join(run_path, f'{cnt_name}___{sty_name}'),
+            **sample_items
         )
         res.save(os.path.join(run_path, 'output_imgs', f'{cnt_name}___{sty_name}.png'))
 

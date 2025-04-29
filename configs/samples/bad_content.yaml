@@ -1,0 +1,20 @@
+- cnt_img_path: /home/stud_lab_vk_01/Guide-and-Rescale/data/content/detailed_street.jpg
+  cnt_prompt: An image
+  edit_prompt: ''
+  sty_img_path: /home/stud_lab_vk_01/Guide-and-Rescale/data/style/moonk.jpg
+  sty_prompt: ''
+- cnt_img_path: /home/stud_lab_vk_01/Guide-and-Rescale/data/content/detailed_street.jpg
+  cnt_prompt: An image
+  edit_prompt: ''
+  sty_img_path: /home/stud_lab_vk_01/Guide-and-Rescale/data/style/picasso.jpg
+  sty_prompt: ''
+- cnt_img_path: /home/stud_lab_vk_01/Guide-and-Rescale/data/content/teddy-bear-bear-children-toys-forest-46178.jpeg
+  cnt_prompt: An image
+  edit_prompt: ''
+  sty_img_path: /home/stud_lab_vk_01/Guide-and-Rescale/data/style/moonk.jpg
+  sty_prompt: ''
+- cnt_img_path: /home/stud_lab_vk_01/Guide-and-Rescale/data/content/teddy-bear-bear-children-toys-forest-46178.jpeg
+  cnt_prompt: An image
+  edit_prompt: ''
+  sty_img_path: /home/stud_lab_vk_01/Guide-and-Rescale/data/style/picasso.jpg
+  sty_prompt: ''

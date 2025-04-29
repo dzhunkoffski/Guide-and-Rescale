@@ -16,6 +16,6 @@ scheduler_name: ddim_50_eps
 model_name: stable-diffusion-v1-4
 
 exp_configs:
-  qkv_guider_start: 25
+  qkv_guider_start: 0
   qkv_guider_end: 50
-  qkv_guider_scale: 75.0
+  qkv_guider_scale: 1.0

@@ -30,11 +30,13 @@ class GuidanceEditing:
     def __init__(
             self,
             model,
-            config
+            config,
+            root_path: str = None
     ):
 
         self.config = config
         self.model = model
+        self.root_path = root_path
 
         toggle_grad(self.model.unet, False)
 
@@ -125,6 +127,7 @@ class GuidanceEditing:
         self.init_prompt_stylisation(inv_prompt, trg_prompt, inv_control_image_prompt)
         self.verbose = verbose
         self.sty_image = control_image
+        self.cnt_image = image_gt
 
         image_gt = np.array(image_gt)
         image_ctrl = np.array(control_image)
@@ -208,7 +211,9 @@ class GuidanceEditing:
             'inv_ctrl_emb': inv_ctrl_prompt_emb,
             'diff_iter': diffusion_iter,
             'alpha_t': self.model.scheduler.alphas_cumprod[timestep],
-            'sty_img': self.sty_image
+            'sty_img': self.sty_image,
+            'cnt_img': self.cnt_image,
+            'root_path': self.root_path
         }
 
         with torch.no_grad():
@@ -504,12 +509,14 @@ class GuidanceEditing:
             backward_guiders_sum.backward()
             noises['other'] = data_dict['latent'].grad
 
-        log.info(f'Uncond norm: {torch.norm(noises["uncond"])}')
-        if 'other' in noises:
-            log.info(f'Others norm: {torch.norm(noises["other"])}')
-
         scales = self.noise_rescaler(noises, index)
+        # if diffusion_iter >= 30:
+        #     scales['other'] *= 2 * torch.norm(noises['uncond']) / torch.norm(noises['other'])
         noise_pred = sum(scales[k] * noises[k] for k in noises)
+
+        log.info(f'Uncond norm: {torch.norm(scales["uncond"] * noises["uncond"])}')
+        if 'other' in noises:
+            log.info(f'Others norm: {torch.norm(scales["other"] * noises["other"])}')
 
         for g_name, (guider, _) in self.guiders.items():
             if not guider.grad_guider:

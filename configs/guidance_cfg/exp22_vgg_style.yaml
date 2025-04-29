@@ -118,10 +118,12 @@ guiders:
   - 0.0
   - 0.0
   kwargs:
-    apply_gramm: false
+    apply_gramm: true
     style_layers:
       - conv_1
       - conv_2
+      - conv_3
+      - conv_4
 noise_rescaling_setup:
   type: identity_rescaler
   init_setup: 1.0

@@ -73,14 +73,17 @@ def run_experiment(cfg: DictConfig):
     use_deterministic()
 
     device = torch.device(cfg['device'] if torch.cuda.is_available() else 'cpu')
+    log.info(device)
 
     scheduler = get_scheduler(cfg['scheduler_name'])
     model = get_model(scheduler, cfg['model_name'], device)
     config = cfg['guidance_cfg']
 
     os.makedirs(os.path.join(run_path, 'output_imgs'))
+    torch.cuda.empty_cache()
 
     for sample_items in cfg['samples']:
+        torch.cuda.empty_cache()
         cnt_name = Path(sample_items['cnt_img_path']).stem
         sty_name = Path(sample_items['sty_img_path']).stem
         log.info(f'Processing cnt={cnt_name}; sty={sty_name}')

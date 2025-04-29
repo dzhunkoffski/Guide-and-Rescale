@@ -20,8 +20,8 @@ model_name: stable-diffusion-v1-4
 
 exp_configs:
   content_guider_start: 0
-  content_guider_end: 0
-  content_guider_scale: 0.0
+  content_guider_end: 25
+  content_guider_scale: 7500.0
   style_guider_start: 25
   style_guider_end: 50
-  style_guider_scale: 1.0
+  style_guider_scale: 500000.0
