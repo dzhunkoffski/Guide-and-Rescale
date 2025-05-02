@@ -13,7 +13,7 @@ guiders:
   g_scale: 0.0
   kwargs:
     is_source_guidance: false
-- name: self_attn_qkv_l2
+- name: self_attn_map_qkv_l2
   g_scale:
   - 0.0
   - 0.0
@@ -66,18 +66,17 @@ guiders:
   - 0.0
   - 0.0
   kwargs:
-    q_scale: 75.0
+    attn_map_scale: 1000000.0
+    attn_map_iter_start: 0
+    attn_map_iter_end: 35
+    q_scale: 0.0
     kv_scale: 75.0
-    q_iter_start: 0
-    q_iter_end: 50
-    kv_iter_start: 30
-    kv_iter_end: 50
-    save_data_dict: false
-    save_data_dir: 'bruh'
+    qkv_iter_start: 35
+    qkv_iter_end: 50
     layers_num:
       down_self:
         - 0
-        - 6
+        - 9
       mid_self:
         - 0
         - 1
@@ -86,10 +85,10 @@ guiders:
         - 9
       down_q:
         - 0
-        - 0
+        - 9
       mid_q:
         - 0
-        - 0
+        - 1
       up_q:
         - 0
         - 9
@@ -100,7 +99,7 @@ guiders:
         - 0
         - 0
       up_k:
-        - 3
+        - 0
         - 9
       down_v:
         - 0
@@ -109,7 +108,7 @@ guiders:
         - 0
         - 0
       up_v:
-        - 3
+        - 0
         - 9
 noise_rescaling_setup:
   type: identity_rescaler

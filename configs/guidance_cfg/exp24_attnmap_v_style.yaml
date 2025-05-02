@@ -66,10 +66,10 @@ guiders:
   - 0.0
   - 0.0
   kwargs:
-    attn_map_scale: 7500.0
+    attn_map_scale: 1000000.0
     attn_map_iter_start: 0
     attn_map_iter_end: 50
-    v_scale: 80.0
+    v_scale: 10000.0
     v_iter_start: 30
     v_iter_end: 50
     save_data_dict: false

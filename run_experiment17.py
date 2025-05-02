@@ -86,6 +86,7 @@ def run_experiment(cfg: DictConfig):
         torch.cuda.empty_cache()
         cnt_name = Path(sample_items['cnt_img_path']).stem
         sty_name = Path(sample_items['sty_img_path']).stem
+        sty_name = os.path.basename(os.path.dirname(sample_items['sty_img_path'])) + '___'  + sty_name
         log.info(f'Processing cnt={cnt_name}; sty={sty_name}')
         g_config = copy.deepcopy(config)
 
