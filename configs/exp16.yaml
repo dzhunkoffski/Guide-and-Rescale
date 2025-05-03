@@ -20,8 +20,12 @@ model_name: stable-diffusion-v1-4
 
 exp_configs:
   content_guider_start: 0
-  content_guider_end: 25
+  content_guider_end: 50
   content_guider_scale: 7500.0
-  style_guider_start: 25
+  style_guider_start: 30
   style_guider_end: 50
   style_guider_scale: 500000.0
+  do_others_rescaling: true
+  others_rescaling_iter_start: 30
+  others_rescaling_iter_end: 50
+  others_rescaling_factor: 2

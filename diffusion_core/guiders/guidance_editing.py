@@ -28,15 +28,19 @@ def adain(latent_ctrl: torch.Tensor, latent_sty: torch.Tensor):
 
 class GuidanceEditing:
     def __init__(
-            self,
-            model,
-            config,
-            root_path: str = None
+            self, model, config, root_path: str = None,
+            do_others_rescaling: bool = False, others_rescaling_iter_start: int = 30,
+            others_rescaling_iter_end: int = 50, others_rescaling_factor: int = 1
     ):
 
         self.config = config
         self.model = model
         self.root_path = root_path
+
+        self.do_others_rescaling = do_others_rescaling
+        self.others_rescaling_iter_start = others_rescaling_iter_start
+        self.others_rescaling_iter_end = others_rescaling_iter_end
+        self.others_rescaling_factor = others_rescaling_factor
 
         toggle_grad(self.model.unet, False)
 
@@ -510,6 +514,8 @@ class GuidanceEditing:
             noises['other'] = data_dict['latent'].grad
 
         scales = self.noise_rescaler(noises, index)
+        if self.do_others_rescaling and diffusion_iter >= self.others_rescaling_iter_start and diffusion_iter < self.others_rescaling_iter_end:
+            scales['other'] *= self.others_rescaling_factor * torch.norm(noises['uncond']) / torch.norm(noises['other'])
         # if diffusion_iter >= 30:
         #     scales['other'] *= 2 * torch.norm(noises['uncond']) / torch.norm(noises['other'])
         noise_pred = sum(scales[k] * noises[k] for k in noises)

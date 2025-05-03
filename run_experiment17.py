@@ -44,17 +44,38 @@ def get_model(scheduler, model_name, device):
 def generate_single(
         cnt_img_path: str, cnt_prompt: str,
         sty_img_path: str, sty_prompt: str,
-        edit_prompt: str, edit_cfg: DictConfig, model: nn.Module):
+        edit_prompt: str, edit_cfg: DictConfig, model: nn.Module,
+        do_others_rescaling, others_rescaling_iter_start, others_rescaling_iter_end, others_rescaling_factor,
+        *args, **kwargs):
     cnt_img = Image.fromarray(load_512(cnt_img_path))
     sty_img = Image.fromarray(load_512(sty_img_path))
 
-    guidance = GuidanceEditing(model, edit_cfg)
+    guidance = GuidanceEditing(
+        model, edit_cfg,
+        do_others_rescaling=do_others_rescaling, others_rescaling_iter_start=others_rescaling_iter_start,
+        others_rescaling_iter_end=others_rescaling_iter_end, others_rescaling_factor=others_rescaling_factor
+    )
     res = guidance.call_stylisation(
         image_gt=cnt_img, inv_prompt=cnt_prompt, trg_prompt=edit_prompt,
         control_image=sty_img, inv_control_prompt=sty_prompt, verbose=True
     )
     res = Image.fromarray(res)
     return res
+
+def img_panel(img1: Image, img2: Image, img3: Image):
+    img1 = img1.resize((256, 256))
+    img2 = img2.resize((256, 256))
+    img3 = img3.resize((256, 256))
+
+    total_width = 256 * 3
+    new_im = Image.new('RGB', (total_width, 256))
+
+    x_offset = 0
+    for im in [img1, img2, img3]:
+        new_im.paste(im, (x_offset, 0))
+        x_offset += im.width
+    
+    return new_im
 
 @hydra.main(version_base=None, config_path='configs', config_name='exp17')
 def run_experiment(cfg: DictConfig):
@@ -88,6 +109,10 @@ def run_experiment(cfg: DictConfig):
         sty_name = Path(sample_items['sty_img_path']).stem
         sty_name = os.path.basename(os.path.dirname(sample_items['sty_img_path'])) + '___'  + sty_name
         log.info(f'Processing cnt={cnt_name}; sty={sty_name}')
+
+        cnt_img = Image.open(sample_items['cnt_img_path'])
+        sty_img = Image.open(sample_items["sty_img_path"])
+
         g_config = copy.deepcopy(config)
 
         # Prepare selfattn guider
@@ -97,9 +122,11 @@ def run_experiment(cfg: DictConfig):
         log.info(f'Scales for qkv guider:\n{g_config["guiders"][1]["g_scale"]}')
 
         res = generate_single(
-            edit_cfg=g_config, model=model, **sample_items
+            edit_cfg=g_config, model=model, **cfg['exp_configs'], **sample_items
         )
         res.save(os.path.join(run_path, 'output_imgs', f'{cnt_name}___{sty_name}.png'))
+        panel = img_panel(cnt_img, sty_img, res)
+        panel.save(os.path.join(run_path, 'output_imgs', f'panel___{cnt_name}___{sty_name}.png'))
 
 if __name__ == '__main__':
     run_experiment()

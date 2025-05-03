@@ -1,0 +1,52 @@
+- cnt_img_path: ../StyleBench/content/A cute boy.png
+  cnt_prompt: A cute boy
+  edit_prompt: ''
+  sty_img_path: ../StyleBench/style/Nouveau/00.jpg
+  sty_prompt: ''
+- cnt_img_path: ../StyleBench/content/objects including a wine bottle, a wine glass,
+    a bowl, a decorative bottle, and a sphere.png
+  cnt_prompt: objects including a wine bottle, a wine glass, a bowl, a decorative
+    bottle, and a sphere
+  edit_prompt: ''
+  sty_img_path: ../StyleBench/style/3D Model 03/00.jpg
+  sty_prompt: ''
+- cnt_img_path: ../StyleBench/content/Towering mountains.png
+  cnt_prompt: Towering mountains
+  edit_prompt: ''
+  sty_img_path: ../StyleBench/style/Orphism/07.jpg
+  sty_prompt: ''
+- cnt_img_path: ../StyleBench/content/A watch.png
+  cnt_prompt: A watch
+  edit_prompt: ''
+  sty_img_path: ../StyleBench/style/3D Model 05/04.jpg
+  sty_prompt: ''
+- cnt_img_path: ../StyleBench/content/Flowers.png
+  cnt_prompt: Flowers
+  edit_prompt: ''
+  sty_img_path: ../StyleBench/style/Icon 01/03.jpg
+  sty_prompt: ''
+- cnt_img_path: ../StyleBench/content/Sofa, indoor.png
+  cnt_prompt: Sofa, indoor
+  edit_prompt: ''
+  sty_img_path: ../StyleBench/style/IsoMetric/05.jpg
+  sty_prompt: ''
+- cnt_img_path: ../StyleBench/content/A wolf.png
+  cnt_prompt: A wolf
+  edit_prompt: ''
+  sty_img_path: ../StyleBench/style/Classicsm/00.jpg
+  sty_prompt: ''
+- cnt_img_path: ../StyleBench/content/Small sofa.png
+  cnt_prompt: Small sofa
+  edit_prompt: ''
+  sty_img_path: ../StyleBench/style/Anime 06/00.jpg
+  sty_prompt: ''
+- cnt_img_path: ../StyleBench/content/A vibrant sports car.png
+  cnt_prompt: A vibrant sports car
+  edit_prompt: ''
+  sty_img_path: ../StyleBench/style/Icon 02/04.jpg
+  sty_prompt: ''
+- cnt_img_path: ../StyleBench/content/A lion's head.png
+  cnt_prompt: A lion's head
+  edit_prompt: ''
+  sty_img_path: ../StyleBench/style/Cublism/03.jpg
+  sty_prompt: ''

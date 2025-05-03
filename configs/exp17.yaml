@@ -19,3 +19,7 @@ exp_configs:
   qkv_guider_start: 0
   qkv_guider_end: 50
   qkv_guider_scale: 1.0
+  do_others_rescaling: true
+  others_rescaling_iter_start: 30
+  others_rescaling_iter_end: 50
+  others_rescaling_factor: 2

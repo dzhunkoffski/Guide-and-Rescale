@@ -14,6 +14,8 @@ def run(cfg):
     print(f'Found {len(sty_imgs)} style images')
 
     samples = []
+    # for i, cnt_p in enumerate(random.sample(cnt_imgs, 10)):
+    #     for sty_p in random.sample(sty_imgs, 1):
     for i, cnt_p in enumerate(cnt_imgs):
         for sty_p in sty_imgs:
             if cfg.cnt_prompt_from_name:
@@ -21,17 +23,20 @@ def run(cfg):
             else:
                 cnt_prompt = 'An image'
             samples.append({
-                'cnt_img_path': cnt_p, 'cnt_prompt': cnt_prompt,
-                'sty_img_path': sty_p, 'sty_prompt': '', 'edit_prompt': ''
+                'cnt_img_path': os.path.relpath(cnt_p), 'cnt_prompt': cnt_prompt,
+                'sty_img_path': os.path.relpath(sty_p), 'sty_prompt': '', 'edit_prompt': ''
             })
     
-    step = len(samples) // 5
+    samples = random.sample(samples, 8192)
+    step = len(samples) // 4
     for i in range(0, len(samples), step):
-        with open(os.path.join(cfg.save_to, f'stylebench_{i}.yaml'), 'w') as fd:
+        with open(os.path.join(cfg.save_to, f'style_bench_{i // step}.yaml'), 'w') as fd:
             yaml.dump(samples[i : min(len(samples), i + step)], fd, default_flow_style=False)
 
-    # samples = random.sample(samples, 100)
-    # with open(os.path.join(cfg.save_to, f'stylebench_small_imageprompt.yaml'), 'w') as fd:
+    # with open(os.path.join(cfg.save_to, f'style_bench.yaml'), 'w') as fd:
+    #     yaml.dump(samples, fd, default_flow_style=False)
+
+    # with open(os.path.join(cfg.save_to, f'stylebench_tune.yaml'), 'w') as fd:
     #     yaml.dump(samples, fd, default_flow_style=False)
 
 if __name__ == '__main__':
