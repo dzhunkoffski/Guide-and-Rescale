@@ -77,12 +77,12 @@ guiders:
     layers_num:
       down_self:
         - 0
-        - 0
+        - 6
       mid_self:
         - 0
         - 0
       up_self:
-        - 0
+        - 3
         - 9
       down_v:
         - 0

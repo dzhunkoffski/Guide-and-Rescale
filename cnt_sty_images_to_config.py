@@ -28,7 +28,8 @@ def run(cfg):
             })
     
     samples = random.sample(samples, 8192)
-    step = len(samples) // 4
+    random.shuffle(samples)
+    step = len(samples) // 8
     for i in range(0, len(samples), step):
         with open(os.path.join(cfg.save_to, f'style_bench_{i // step}.yaml'), 'w') as fd:
             yaml.dump(samples[i : min(len(samples), i + step)], fd, default_flow_style=False)
