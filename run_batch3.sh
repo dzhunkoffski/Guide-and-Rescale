@@ -1,0 +1,2 @@
+python run_experiment17.py guidance_cfg=exp24_attnmap_v_style guidance_cfg.guiders.1.kwargs.attn_map_scale=3000000 samples=style_bench_4 run_name=attn_v_batch1 device=cuda:3
+python run_experiment17.py guidance_cfg=exp24_attnmap_v_style guidance_cfg.guiders.1.kwargs.attn_map_scale=3000000 samples=style_bench_5 run_name=attn_v_batch1 device=cuda:3
