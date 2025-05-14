@@ -1,0 +1,35 @@
+- cnt_img_path: ../StyleBench/content/A helmet displayed on a wooden stand.png
+  cnt_prompt: A helmet displayed on a wooden stand
+  edit_prompt: ''
+  sty_img_path: ../StyleBench/style/Graffiti/07.jpg
+  sty_prompt: ''
+- cnt_img_path: ../StyleBench/content/A honey jar and an orange.png
+  cnt_prompt: A honey jar and an orange
+  edit_prompt: ''
+  sty_img_path: ../StyleBench/style/Neo-Figurative Art/04.jpg
+  sty_prompt: ''
+- cnt_img_path: ../StyleBench/content/An ancient Chinese bronze ding vessel with intricate patterns and motifs.png
+  cnt_prompt: An ancient Chinese bronze ding vessel with intricate patterns and motifs
+  edit_prompt: ''
+  sty_img_path: ../StyleBench/style/Abstract 01/04.jpg
+  sty_prompt: ''
+- cnt_img_path: ../StyleBench/content/An ancient Chinese bronze ding vessel with intricate patterns and motifs.png
+  cnt_prompt: An ancient Chinese bronze ding vessel with intricate patterns and motifs
+  edit_prompt: ''
+  sty_img_path: ../StyleBench/style/Abstract 01/04.jpg
+  sty_prompt: ''
+- cnt_img_path: ../StyleBench/content/Lighthouse on the coast.png
+  cnt_prompt: Lighthouse on the coast
+  edit_prompt: ''
+  sty_img_path: ../StyleBench/style/Cyberpunk/02.jpg
+  sty_prompt: ''
+- cnt_img_path: ../StyleBench/content/objects including a wine bottle, a wine glass, a bowl, a decorative bottle, and a sphere.png
+  cnt_prompt: objects including a wine bottle, a wine glass, a bowl, a decorative bottle, and a sphere
+  edit_prompt: ''
+  sty_img_path: ../StyleBench/style/Realism/04.jpg
+  sty_prompt: ''
+- cnt_img_path: ../StyleBench/content/Small house on the road.png
+  cnt_prompt: Small house on the road
+  edit_prompt: ''
+  sty_img_path: ../StyleBench/style/Line Art/07.jpg
+  sty_prompt: ''

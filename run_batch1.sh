@@ -1,2 +1,2 @@
-python run_experiment17.py guidance_cfg=exp24_attnmap_v_style guidance_cfg.guiders.1.kwargs.attn_map_scale=3000000 samples=style_bench_0 run_name=attn_v_batch1 device=cuda:1
-python run_experiment17.py guidance_cfg=exp24_attnmap_v_style guidance_cfg.guiders.1.kwargs.attn_map_scale=3000000 samples=style_bench_1 run_name=attn_v_batch1 device=cuda:1
+python run_experiment17.py guidance_cfg=exp24_attnmap_v_style guidance_cfg.guiders.1.kwargs.attn_map_scale=3000000 samples=style_bench_0 run_name=attn_v_0 device=cuda:1 guidance_cfg.adain_start_ix=30 guidance_cfg.adain_end_ix=50
+python run_experiment17.py guidance_cfg=exp24_attnmap_v_style guidance_cfg.guiders.1.kwargs.attn_map_scale=3000000 samples=style_bench_1 run_name=attn_v_1 device=cuda:1 guidance_cfg.adain_start_ix=30 guidance_cfg.adain_end_ix=50

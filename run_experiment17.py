@@ -2,6 +2,7 @@ import os
 from datetime import datetime
 from pathlib import Path
 import copy
+import gc
 
 import hydra
 from omegaconf import OmegaConf, DictConfig
@@ -92,18 +93,23 @@ def run_experiment(cfg: DictConfig):
     if torch.cuda.is_available():
         torch.cuda.set_device(cfg['device'])
     use_deterministic()
-
+    
     device = torch.device(cfg['device'] if torch.cuda.is_available() else 'cpu')
     log.info(device)
+
+    torch.cuda.empty_cache()
+    gc.collect()
 
     scheduler = get_scheduler(cfg['scheduler_name'])
     model = get_model(scheduler, cfg['model_name'], device)
     config = cfg['guidance_cfg']
 
     os.makedirs(os.path.join(run_path, 'output_imgs'))
+    gc.collect()
     torch.cuda.empty_cache()
 
     for sample_items in cfg['samples']:
+        gc.collect()
         torch.cuda.empty_cache()
         cnt_name = Path(sample_items['cnt_img_path']).stem
         sty_name = Path(sample_items['sty_img_path']).stem
