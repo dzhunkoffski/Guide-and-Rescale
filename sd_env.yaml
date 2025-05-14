@@ -33,3 +33,7 @@ dependencies:
     - -e git+https://github.com/openai/CLIP.git@main#egg=clip
     - ipykernel 
     - ipywidgets
+    - hydra-core
+    - lpips
+    - scikit-image
+    - scikit-learn
